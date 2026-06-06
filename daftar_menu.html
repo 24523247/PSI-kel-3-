@@ -1,65 +1,56 @@
+```html
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Menu Digital</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Daftar Menu</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
 
   <style>
+
     *{
       margin:0;
       padding:0;
       box-sizing:border-box;
-      font-family: Arial, sans-serif;
+      font-family:'Poppins', sans-serif;
     }
 
     body{
-      background:#f5f5f5;
-      padding:20px;
-    }
-
-    .container{
-      max-width:1200px;
-      margin:auto;
+      background:#f5f7fb;
+      padding:40px;
+      color:#333;
     }
 
     h1{
       text-align:center;
-      margin-bottom:20px;
-      color:#333;
+      margin-bottom:35px;
+      font-size:30px;
+      font-weight:600;
+      color:#222;
+      letter-spacing:1px;
     }
 
-    .topbar{
-      display:flex;
-      gap:10px;
-      margin-bottom:20px;
-      flex-wrap:wrap;
-    }
-
-    .topbar input,
-    .topbar select{
-      padding:12px;
-      border:1px solid #ccc;
-      border-radius:8px;
-      flex:1;
-    }
-
-    .menu-grid{
+    .container{
       display:grid;
-      grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
-      gap:20px;
+      grid-template-columns:repeat(auto-fit, minmax(230px,1fr));
+      gap:22px;
     }
 
     .card{
       background:white;
-      border-radius:12px;
+      border-radius:18px;
       overflow:hidden;
-      box-shadow:0 2px 10px rgba(0,0,0,0.1);
       transition:0.3s;
+      box-shadow:0 4px 15px rgba(0,0,0,0.08);
     }
 
     .card:hover{
-      transform:translateY(-5px);
+      transform:translateY(-6px);
     }
 
     .card img{
@@ -68,211 +59,154 @@
       object-fit:cover;
     }
 
-    .card-body{
-      padding:15px;
+    .card-content{
+      padding:18px;
     }
 
     .menu-title{
-      font-size:20px;
-      margin-bottom:10px;
+      font-size:18px;
+      font-weight:600;
+      margin-bottom:8px;
       color:#222;
     }
 
-    .category{
-      display:inline-block;
-      background:#eee;
-      padding:5px 10px;
-      border-radius:20px;
+    .desc{
       font-size:12px;
-      margin-bottom:10px;
+      line-height:1.6;
+      color:#777;
+      margin-bottom:14px;
     }
 
     .price{
       font-size:18px;
-      color:#e63946;
-      margin-bottom:10px;
-      font-weight:bold;
+      font-weight:600;
+      color:#ff5a5f;
     }
 
     button{
       width:100%;
+      margin-top:15px;
       padding:10px;
       border:none;
-      background:#2a9d8f;
+      border-radius:10px;
+      background:#222;
       color:white;
-      border-radius:8px;
+      font-size:13px;
       cursor:pointer;
-      font-size:16px;
+      transition:0.3s;
     }
 
     button:hover{
-      background:#21867a;
+      background:#444;
     }
 
-    .cart{
-      margin-top:30px;
-      background:white;
-      padding:20px;
-      border-radius:12px;
-      box-shadow:0 2px 10px rgba(0,0,0,0.1);
-    }
-
-    .cart h2{
-      margin-bottom:15px;
-    }
-
-    .cart-item{
-      display:flex;
-      justify-content:space-between;
-      margin-bottom:10px;
-    }
-
-    .total{
-      margin-top:15px;
-      font-size:20px;
-      font-weight:bold;
-      text-align:right;
-    }
   </style>
 </head>
+
 <body>
+
+  <h1>🍽️ Daftar Menu</h1>
 
   <div class="container">
 
-    <h1>🍽️ Menu Digital Restoran</h1>
+    <div class="card">
+      <img src="https://images.unsplash.com/photo-1568901346375-23c9450c58cd?q=80&w=1000" alt="Burger">
 
-    <div class="topbar">
-      <input type="text" id="search" placeholder="Cari menu...">
+      <div class="card-content">
+        <div class="menu-title">Burger Special</div>
 
-      <select id="filterCategory">
-        <option value="all">Semua Kategori</option>
-        <option value="Makanan">Makanan</option>
-        <option value="Minuman">Minuman</option>
-      </select>
+        <div class="desc">
+          Burger premium dengan daging juicy dan keju leleh.
+        </div>
+
+        <div class="price">Rp 25.000</div>
+
+        <button>Pesan Sekarang</button>
+      </div>
     </div>
 
-    <div class="menu-grid" id="menuContainer"></div>
+    <div class="card">
+      <img src="https://images.unsplash.com/photo-1513104890138-7c749659a591?q=80&w=1000" alt="Pizza">
 
-    <div class="cart">
-      <h2>🛒 Keranjang</h2>
+      <div class="card-content">
+        <div class="menu-title">Pizza Mozzarella</div>
 
-      <div id="cartItems"></div>
+        <div class="desc">
+          Pizza creamy dengan topping mozzarella melimpah.
+        </div>
 
-      <div class="total">
-        Total: Rp <span id="totalPrice">0</span>
+        <div class="price">Rp 45.000</div>
+
+        <button>Pesan Sekarang</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <img src="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=1000" alt="Salad">
+
+      <div class="card-content">
+        <div class="menu-title">Healthy Salad</div>
+
+        <div class="desc">
+          Salad segar dengan sayuran fresh dan saus spesial.
+        </div>
+
+        <div class="price">Rp 20.000</div>
+
+        <button>Pesan Sekarang</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <img src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?q=80&w=1000" alt="Nasi Goreng">
+
+      <div class="card-content">
+        <div class="menu-title">Nasi Goreng</div>
+
+        <div class="desc">
+          Nasi goreng spesial dengan telur dan ayam crispy.
+        </div>
+
+        <div class="price">Rp 22.000</div>
+
+        <button>Pesan Sekarang</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <img src="https://images.unsplash.com/photo-1499636136210-6f4ee915583e?q=80&w=1000" alt="Coffee">
+
+      <div class="card-content">
+        <div class="menu-title">Coffee Latte</div>
+
+        <div class="desc">
+          Kopi latte hangat dengan aroma premium coffee bean.
+        </div>
+
+        <div class="price">Rp 15.000</div>
+
+        <button>Pesan Sekarang</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <img src="https://images.unsplash.com/photo-1627308595229-7830a5c91f9f?q=80&w=1000" alt="Ice Cream">
+
+      <div class="card-content">
+        <div class="menu-title">Ice Cream Vanilla</div>
+
+        <div class="desc">
+          Ice cream lembut dengan topping coklat spesial.
+        </div>
+
+        <div class="price">Rp 12.000</div>
+
+        <button>Pesan Sekarang</button>
       </div>
     </div>
 
   </div>
 
-  <script>
-    const menus = [
-      {
-        name: "Nasi Goreng",
-        category: "Makanan",
-        price: 25000,
-        image: "https://images.unsplash.com/photo-1604908176997-4318d2d4c5c1?q=80&w=1200&auto=format&fit=crop"
-      },
-      {
-        name: "Mie Ayam",
-        category: "Makanan",
-        price: 20000,
-        image: "https://images.unsplash.com/photo-1612929633738-8fe44f7ec841?q=80&w=1200&auto=format&fit=crop"
-      },
-      {
-        name: "Es Teh",
-        category: "Minuman",
-        price: 8000,
-        image: "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?q=80&w=1200&auto=format&fit=crop"
-      },
-      {
-        name: "Kopi Susu",
-        category: "Minuman",
-        price: 18000,
-        image: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?q=80&w=1200&auto=format&fit=crop"
-      }
-    ];
-
-    const menuContainer = document.getElementById("menuContainer");
-    const searchInput = document.getElementById("search");
-    const filterCategory = document.getElementById("filterCategory");
-
-    const cartItems = document.getElementById("cartItems");
-    const totalPrice = document.getElementById("totalPrice");
-
-    let cart = [];
-
-    function formatRupiah(number){
-      return number.toLocaleString("id-ID");
-    }
-
-    function renderMenu(){
-      const keyword = searchInput.value.toLowerCase();
-      const category = filterCategory.value;
-
-      menuContainer.innerHTML = "";
-
-      const filteredMenus = menus.filter(menu => {
-        const matchSearch = menu.name.toLowerCase().includes(keyword);
-
-        const matchCategory =
-          category === "all" || menu.category === category;
-
-        return matchSearch && matchCategory;
-      });
-
-      filteredMenus.forEach((menu, index) => {
-        menuContainer.innerHTML += `
-          <div class="card">
-            <img src="${menu.image}" alt="${menu.name}">
-
-            <div class="card-body">
-              <div class="category">${menu.category}</div>
-
-              <h3 class="menu-title">${menu.name}</h3>
-
-              <div class="price">
-                Rp ${formatRupiah(menu.price)}
-              </div>
-
-              <button onclick="addToCart(${index})">
-                Tambah ke Keranjang
-              </button>
-            </div>
-          </div>
-        `;
-      });
-    }
-
-    function addToCart(index){
-      cart.push(menus[index]);
-      renderCart();
-    }
-
-    function renderCart(){
-      cartItems.innerHTML = "";
-
-      let total = 0;
-
-      cart.forEach(item => {
-        total += item.price;
-
-        cartItems.innerHTML += `
-          <div class="cart-item">
-            <span>${item.name}</span>
-            <span>Rp ${formatRupiah(item.price)}</span>
-          </div>
-        `;
-      });
-
-      totalPrice.innerText = formatRupiah(total);
-    }
-
-    searchInput.addEventListener("input", renderMenu);
-    filterCategory.addEventListener("change", renderMenu);
-
-    renderMenu();
-  </script>
-
 </body>
 </html>
+```
