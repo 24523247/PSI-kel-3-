@@ -1,212 +1,255 @@
-```html
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Daftar Menu</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smart Menu AI</title>
 
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<style>
 
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:Arial, sans-serif;
+}
 
-  <style>
+body{
+    background:#f4f6f9;
+    padding:30px;
+}
 
-    *{
-      margin:0;
-      padding:0;
-      box-sizing:border-box;
-      font-family:'Poppins', sans-serif;
-    }
+h1{
+    text-align:center;
+    margin-bottom:30px;
+}
 
-    body{
-      background:#f5f7fb;
-      padding:40px;
-      color:#333;
-    }
+.health-form{
+    background:white;
+    padding:20px;
+    border-radius:15px;
+    margin-bottom:30px;
+    box-shadow:0 2px 10px rgba(0,0,0,.1);
+}
 
-    h1{
-      text-align:center;
-      margin-bottom:35px;
-      font-size:30px;
-      font-weight:600;
-      color:#222;
-      letter-spacing:1px;
-    }
+select,button{
+    padding:10px;
+    margin-top:10px;
+}
 
-    .container{
-      display:grid;
-      grid-template-columns:repeat(auto-fit, minmax(230px,1fr));
-      gap:22px;
-    }
+button{
+    background:#243b55;
+    color:white;
+    border:none;
+    border-radius:8px;
+    cursor:pointer;
+}
 
-    .card{
-      background:white;
-      border-radius:18px;
-      overflow:hidden;
-      transition:0.3s;
-      box-shadow:0 4px 15px rgba(0,0,0,0.08);
-    }
+.container{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
+    gap:20px;
+}
 
-    .card:hover{
-      transform:translateY(-6px);
-    }
+.card{
+    background:white;
+    border-radius:15px;
+    overflow:hidden;
+    box-shadow:0 2px 10px rgba(0,0,0,.1);
+}
 
-    .card img{
-      width:100%;
-      height:180px;
-      object-fit:cover;
-    }
+.card img{
+    width:100%;
+    height:180px;
+    object-fit:cover;
+}
 
-    .card-content{
-      padding:18px;
-    }
+.card-content{
+    padding:15px;
+}
 
-    .menu-title{
-      font-size:18px;
-      font-weight:600;
-      margin-bottom:8px;
-      color:#222;
-    }
+.badge{
+    display:none;
+    background:#4CAF50;
+    color:white;
+    padding:5px 10px;
+    border-radius:20px;
+    font-size:12px;
+}
 
-    .desc{
-      font-size:12px;
-      line-height:1.6;
-      color:#777;
-      margin-bottom:14px;
-    }
+.price{
+    color:red;
+    font-weight:bold;
+    margin-top:10px;
+}
 
-    .price{
-      font-size:18px;
-      font-weight:600;
-      color:#ff5a5f;
-    }
+.cart{
+    margin-top:40px;
+    background:white;
+    padding:20px;
+    border-radius:15px;
+    box-shadow:0 2px 10px rgba(0,0,0,.1);
+}
 
-    button{
-      width:100%;
-      margin-top:15px;
-      padding:10px;
-      border:none;
-      border-radius:10px;
-      background:#222;
-      color:white;
-      font-size:13px;
-      cursor:pointer;
-      transition:0.3s;
-    }
+.cart-item{
+    margin:10px 0;
+}
 
-    button:hover{
-      background:#444;
-    }
+.total{
+    font-size:20px;
+    font-weight:bold;
+    margin-top:15px;
+}
 
-  </style>
+</style>
 </head>
-
 <body>
 
-  <h1>🍽️ Daftar Menu</h1>
+<h1>🍽 Smart Restaurant AI</h1>
 
-  <div class="container">
+<div class="health-form">
+    <h3>Input Kondisi Kesehatan</h3>
 
-    <div class="card">
-      <img src="https://images.unsplash.com/photo-1568901346375-23c9450c58cd?q=80&w=1000" alt="Burger">
+    <select id="condition">
+        <option value="normal">Normal</option>
+        <option value="diet">Diet</option>
+        <option value="diabetes">Diabetes</option>
+        <option value="hipertensi">Hipertensi</option>
+    </select>
 
-      <div class="card-content">
-        <div class="menu-title">Burger Special</div>
+    <button onclick="recommendMenu()">
+        Dapatkan Rekomendasi AI
+    </button>
+</div>
 
-        <div class="desc">
-          Burger premium dengan daging juicy dan keju leleh.
+<div class="container">
+
+    <div class="card" data-category="diet">
+        <img src="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=1000">
+        <div class="card-content">
+            <span class="badge">⭐ Direkomendasikan AI</span>
+            <h3>Healthy Salad</h3>
+            <p>Kalori rendah dan tinggi serat.</p>
+            <div class="price">Rp 20.000</div>
+            <button onclick="addToCart('Healthy Salad',20000)">
+                Pesan
+            </button>
         </div>
-
-        <div class="price">Rp 25.000</div>
-
-        <button>Pesan Sekarang</button>
-      </div>
     </div>
 
-    <div class="card">
-      <img src="https://images.unsplash.com/photo-1513104890138-7c749659a591?q=80&w=1000" alt="Pizza">
-
-      <div class="card-content">
-        <div class="menu-title">Pizza Mozzarella</div>
-
-        <div class="desc">
-          Pizza creamy dengan topping mozzarella melimpah.
+    <div class="card" data-category="normal">
+        <img src="https://images.unsplash.com/photo-1568901346375-23c9450c58cd?q=80&w=1000">
+        <div class="card-content">
+            <span class="badge">⭐ Direkomendasikan AI</span>
+            <h3>Burger Special</h3>
+            <p>Burger premium dengan keju.</p>
+            <div class="price">Rp 25.000</div>
+            <button onclick="addToCart('Burger Special',25000)">
+                Pesan
+            </button>
         </div>
-
-        <div class="price">Rp 45.000</div>
-
-        <button>Pesan Sekarang</button>
-      </div>
     </div>
 
-    <div class="card">
-      <img src="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=1000" alt="Salad">
-
-      <div class="card-content">
-        <div class="menu-title">Healthy Salad</div>
-
-        <div class="desc">
-          Salad segar dengan sayuran fresh dan saus spesial.
+    <div class="card" data-category="diabetes">
+        <img src="https://images.unsplash.com/photo-1512621776951-a57141f2eefd?q=80&w=1000">
+        <div class="card-content">
+            <span class="badge">⭐ Direkomendasikan AI</span>
+            <h3>Vegetable Bowl</h3>
+            <p>Rendah gula dan tinggi serat.</p>
+            <div class="price">Rp 22.000</div>
+            <button onclick="addToCart('Vegetable Bowl',22000)">
+                Pesan
+            </button>
         </div>
-
-        <div class="price">Rp 20.000</div>
-
-        <button>Pesan Sekarang</button>
-      </div>
     </div>
 
-    <div class="card">
-      <img src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?q=80&w=1000" alt="Nasi Goreng">
-
-      <div class="card-content">
-        <div class="menu-title">Nasi Goreng</div>
-
-        <div class="desc">
-          Nasi goreng spesial dengan telur dan ayam crispy.
+    <div class="card" data-category="hipertensi">
+        <img src="https://images.unsplash.com/photo-1490645935967-10de6ba17061?q=80&w=1000">
+        <div class="card-content">
+            <span class="badge">⭐ Direkomendasikan AI</span>
+            <h3>Grilled Chicken</h3>
+            <p>Protein tinggi dan rendah garam.</p>
+            <div class="price">Rp 30.000</div>
+            <button onclick="addToCart('Grilled Chicken',30000)">
+                Pesan
+            </button>
         </div>
-
-        <div class="price">Rp 22.000</div>
-
-        <button>Pesan Sekarang</button>
-      </div>
     </div>
 
-    <div class="card">
-      <img src="https://images.unsplash.com/photo-1499636136210-6f4ee915583e?q=80&w=1000" alt="Coffee">
+</div>
 
-      <div class="card-content">
-        <div class="menu-title">Coffee Latte</div>
+<div class="cart">
+    <h2>🛒 Keranjang Pesanan</h2>
 
-        <div class="desc">
-          Kopi latte hangat dengan aroma premium coffee bean.
-        </div>
+    <div id="cartItems"></div>
 
-        <div class="price">Rp 15.000</div>
-
-        <button>Pesan Sekarang</button>
-      </div>
+    <div class="total">
+        Total: Rp <span id="total">0</span>
     </div>
 
-    <div class="card">
-      <img src="https://images.unsplash.com/photo-1627308595229-7830a5c91f9f?q=80&w=1000" alt="Ice Cream">
+    <button onclick="checkout()">
+        Checkout & Bayar
+    </button>
+</div>
 
-      <div class="card-content">
-        <div class="menu-title">Ice Cream Vanilla</div>
+<script>
 
-        <div class="desc">
-          Ice cream lembut dengan topping coklat spesial.
-        </div>
+let total = 0;
 
-        <div class="price">Rp 12.000</div>
+function recommendMenu(){
 
-        <button>Pesan Sekarang</button>
-      </div>
-    </div>
+    let condition =
+        document.getElementById("condition").value;
 
-  </div>
+    document.querySelectorAll(".badge")
+    .forEach(badge=>{
+        badge.style.display="none";
+    });
+
+    document.querySelectorAll(".card")
+    .forEach(card=>{
+
+        if(card.dataset.category === condition){
+            card.querySelector(".badge")
+            .style.display="inline-block";
+        }
+
+    });
+
+}
+
+function addToCart(name,price){
+
+    let cart =
+        document.getElementById("cartItems");
+
+    let item =
+        document.createElement("div");
+
+    item.classList.add("cart-item");
+
+    item.innerHTML =
+        `${name} - Rp ${price.toLocaleString()}`;
+
+    cart.appendChild(item);
+
+    total += price;
+
+    document.getElementById("total")
+    .innerText = total.toLocaleString();
+
+}
+
+function checkout(){
+
+    alert(
+      "Pembayaran berhasil.\nTotal: Rp "
+      + total.toLocaleString()
+    );
+
+}
+
+</script>
 
 </body>
 </html>
-```
