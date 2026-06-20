@@ -1,0 +1,10 @@
+# File environment — jangan pernah commit ini!
+backend/.env
+
+# Dependency / cache
+vendor/
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db

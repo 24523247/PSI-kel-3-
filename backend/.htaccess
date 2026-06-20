@@ -1,0 +1,5 @@
+# ============================================================
+# .htaccess untuk folder backend/
+# CORS dihandle langsung di config.php via header() PHP
+# ============================================================
+Options -Indexes

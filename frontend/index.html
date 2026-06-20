@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>hygiene order - Simulasi Meja</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="index-page">
+
+    <header class="index-header">
+        <div class="index-logo">🍜</div>
+        <h1>hygiene order</h1>
+        <p>Sistem Pemesanan via QR Code</p>
+    </header>
+
+    <main class="index-main">
+        <p class="index-section-title">Pilih Meja</p>
+        <div class="table-grid" id="tableGrid">
+            <div class="loading" style="grid-column:1/-1">Memuat meja...</div>
+        </div>
+
+        <div class="how-it-works-card">
+            <h3>🔄 Cara Kerja Sistem</h3>
+            <ol>
+                <li>Tamu scan QR Code di meja</li>
+                <li>Browser membuka halaman menu meja</li>
+                <li>Tamu pilih menu, bisa minta rekomendasi AI</li>
+                <li>Popup pembayaran Midtrans muncul</li>
+                <li>Setelah bayar, status pesanan jadi <strong>Lunas</strong></li>
+            </ol>
+        </div>
+    </main>
+
+    <footer class="index-footer">
+        <p>Powered by Midtrans &amp; Claude AI</p>
+    </footer>
+
+</div>
+
+<script>
+const tables = [
+    { code: 'meja-1', name: 'Meja 1' },
+    { code: 'meja-2', name: 'Meja 2' },
+    { code: 'meja-3', name: 'Meja 3' },
+];
+
+function renderTables() {
+    const grid = document.getElementById('tableGrid');
+    grid.innerHTML = tables.map(t => {
+        const url = 'table.html?table=' + t.code;
+        return `
+        <div class="table-card">
+            <div class="table-icon-big">🪑</div>
+            <div class="table-name">${t.name}</div>
+            <div class="table-code-small">${t.code}</div>
+            <a href="${url}" class="btn-table-open">📲 Buka Meja</a>
+        </div>`;
+    }).join('');
+}
+
+renderTables();
+</script>
+</body>
+</html>

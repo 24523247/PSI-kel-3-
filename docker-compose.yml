@@ -1,0 +1,84 @@
+version: '3.8'
+
+# ============================================================
+# Docker Compose - Restaurant QR System
+#
+# Services:
+#   app       = PHP 8.2 + Apache (port 8080)
+#   mysql     = MySQL 8 (port 3306)
+#   phpmyadmin = GUI database (port 8081)
+#
+# Cara menjalankan:
+#   docker compose up -d
+#
+# Cara mematikan:
+#   docker compose down
+#
+# Cara melihat log:
+#   docker compose logs -f app
+# ============================================================
+
+services:
+
+  # ============================================================
+  # Service: app (PHP + Apache)
+  # ============================================================
+  app:
+    build:
+      context: ./docker     # pakai Dockerfile di folder docker/
+      dockerfile: Dockerfile
+    container_name: restaurant_app
+    ports:
+      - "8080:80"           # localhost:8080 → Apache di container
+    volumes:
+      # BIND MOUNT - inilah kunci workflow edit-tanpa-rebuild
+      # Setiap kali kamu save file di komputer,
+      # perubahan langsung muncul saat kamu refresh browser.
+      - ./backend:/var/www/html/backend
+      - ./frontend:/var/www/html/frontend
+    depends_on:
+      - mysql
+    environment:
+      # Tidak perlu env var khusus; konfigurasi DB ada di backend/config.php
+      APACHE_DOCUMENT_ROOT: /var/www/html
+    restart: unless-stopped
+
+  # ============================================================
+  # Service: mysql
+  # ============================================================
+  mysql:
+    image: mysql:8.0
+    container_name: restaurant_mysql
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root123
+      MYSQL_DATABASE: restaurant_db
+    volumes:
+      # File SQL ini dijalankan otomatis pertama kali container dibuat
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+      # Data MySQL disimpan di volume agar tidak hilang saat container restart
+      - mysql_data:/var/lib/mysql
+    restart: unless-stopped
+
+  # ============================================================
+  # Service: phpmyadmin (GUI Database)
+  # ============================================================
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:latest
+    container_name: restaurant_phpmyadmin
+    ports:
+      - "8081:80"           # localhost:8081 → phpMyAdmin
+    environment:
+      PMA_HOST: mysql       # nama service MySQL di atas
+      PMA_USER: root
+      PMA_PASSWORD: root123
+    depends_on:
+      - mysql
+    restart: unless-stopped
+
+# ============================================================
+# Volume untuk menyimpan data MySQL
+# ============================================================
+volumes:
+  mysql_data:
