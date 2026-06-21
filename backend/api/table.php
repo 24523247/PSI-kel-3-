@@ -16,21 +16,22 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
 // Ambil parameter ?code=
 $code = trim($_GET['code'] ?? '');
 
-if (empty($code)) {
-    jsonResponse(['success' => false, 'message' => 'Parameter code wajib diisi'], 400);
-}
-
 $db = getDB();
 
-$stmt = $db->prepare('SELECT id, table_code, table_name FROM `tables` WHERE table_code = ?');
-$stmt->execute([$code]);
-$table = $stmt->fetch();
+if (empty($code)) {
+    // Tanpa parameter: kembalikan semua meja
+    $stmt = $db->query('SELECT id, table_code, table_name FROM `tables` ORDER BY id ASC');
+    $tables = $stmt->fetchAll();
+    jsonResponse(['success' => true, 'data' => $tables]);
+} else {
+    // Dengan ?code=xxx: lookup satu meja
+    $stmt = $db->prepare('SELECT id, table_code, table_name FROM `tables` WHERE table_code = ?');
+    $stmt->execute([$code]);
+    $table = $stmt->fetch();
 
-if (!$table) {
-    jsonResponse(['success' => false, 'message' => 'Meja tidak ditemukan'], 404);
+    if (!$table) {
+        jsonResponse(['success' => false, 'message' => 'Meja tidak ditemukan'], 404);
+    }
+
+    jsonResponse(['success' => true, 'data' => $table]);
 }
-
-jsonResponse([
-    'success' => true,
-    'data'    => $table
-]);
