@@ -8,3 +8,6 @@ vendor/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Dokumentasi internal (tidak perlu di-track)
+docs/

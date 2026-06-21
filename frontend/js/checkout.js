@@ -1,0 +1,202 @@
+const API_BASE  = '/backend/api';
+const urlParams = new URLSearchParams(window.location.search);
+const orderCode = urlParams.get('order');
+const tableCode = urlParams.get('table');
+
+async function init() {
+    if (!orderCode) {
+        showToast('Kode pesanan tidak ditemukan.', 'error');
+        return;
+    }
+
+    const snapToken     = sessionStorage.getItem('snap_token');
+    const snapClientKey = sessionStorage.getItem('snap_client_key');
+
+    if (!snapToken) {
+        showToast('Sesi pembayaran tidak ditemukan. Silakan mulai ulang pesanan.', 'error');
+        setTimeout(() => {
+            window.location.href = tableCode ? `table.html?table=${tableCode}` : 'index.html';
+        }, 2500);
+        return;
+    }
+
+    // Muat ringkasan pesanan dan SNAP secara paralel
+    await Promise.all([
+        loadOrderSummary(),
+        loadSnapScript(snapClientKey, 'https://app.sandbox.midtrans.com/snap/snap.js'),
+    ]);
+
+    embedSnap(snapToken);
+}
+
+// ── Order Summary ─────────────────────────────────
+async function loadOrderSummary() {
+    try {
+        const res  = await fetch(`${API_BASE}/order-status.php?code=${orderCode}`);
+        const json = await res.json();
+        if (json.success) renderOrderSummary(json.data);
+    } catch(e) {
+        document.getElementById('orderSummary').innerHTML =
+            '<p style="padding:16px;color:var(--muted);font-size:.85rem">Gagal memuat ringkasan pesanan.</p>';
+    }
+}
+
+function renderOrderSummary(data) {
+    const order = data.order;
+    const items = data.items;
+
+    const itemsHtml = items.map(item => `
+        <div class="summary-item">
+            <span class="summary-item-name">
+                ${esc(item.name)}
+                <span class="summary-qty">×${item.qty}</span>
+            </span>
+            <span class="summary-item-price">${formatRp(item.subtotal)}</span>
+        </div>`).join('');
+
+    document.getElementById('orderSummary').innerHTML = `
+        <div class="summary-header">
+            <span class="summary-table">📍 ${esc(order.table_name)}</span>
+            <span class="summary-code">#${esc(order.order_code)}</span>
+        </div>
+        <div class="summary-items">${itemsHtml}</div>
+        <div class="summary-total">
+            <span>Total Pembayaran</span>
+            <strong>${formatRp(order.total_amount)}</strong>
+        </div>`;
+}
+
+// ── SNAP ─────────────────────────────────────────
+function loadSnapScript(clientKey, snapUrl) {
+    return new Promise((resolve, reject) => {
+        if (window.snap) { resolve(); return; }
+        const script = document.createElement('script');
+        script.src   = snapUrl;
+        if (clientKey) script.setAttribute('data-client-key', clientKey);
+        script.onload  = resolve;
+        script.onerror = () => reject(new Error('Gagal memuat snap.js'));
+        document.head.appendChild(script);
+    });
+}
+
+function watchSnapInjection() {
+    // MutationObserver: deteksi saat Midtrans inject elemen ke dalam container,
+    // lalu paksa width 100% via inline style — bekerja terlepas dari mekanisme
+    // internal Midtrans (wrapper div, iframe langsung, atau absolute positioning).
+    const container = document.getElementById('snap-container');
+    const mo = new MutationObserver(() => {
+        container.childNodes.forEach(node => {
+            if (node.nodeType !== 1 || node.id === 'snapLoading') return;
+            node.style.setProperty('width',     '100%',  'important');
+            node.style.setProperty('max-width', '100%',  'important');
+        });
+        container.querySelectorAll('iframe').forEach(iframe => {
+            iframe.style.setProperty('width',      '100%',  'important');
+            iframe.style.setProperty('min-height', '500px', 'important');
+            iframe.style.setProperty('border',     'none',  'important');
+            iframe.style.setProperty('display',    'block', 'important');
+        });
+    });
+    mo.observe(container, { childList: true, subtree: false });
+}
+
+function embedSnap(snapToken) {
+    const loading = document.getElementById('snapLoading');
+    if (loading) loading.style.display = 'none';
+
+    // Aktifkan observer SEBELUM embed agar siap saat Midtrans inject
+    watchSnapInjection();
+
+    snap.embed(snapToken, {
+        embedId: 'snap-container',
+        /*
+         * onSuccess/onPending/onError adalah fast path.
+         * Untuk QRIS, pembayaran terjadi di HP lain → Midtrans webhook
+         * update DB → iframe SNAP deteksi status → postMessage ke parent.
+         * Di sandbox, postMessage ini kadang tidak reliable, sehingga
+         * polling di bawah berfungsi sebagai backup yang reliable.
+         */
+        onSuccess: () => {
+            stopPolling();
+            doRedirect('success');
+        },
+        onPending: () => {
+            doRedirect('pending');
+        },
+        onError: () => {
+            stopPolling();
+            doRedirect('failed');
+        },
+        onClose: () => {
+            showToast('Pembayaran dibatalkan.', 'warning');
+        }
+    });
+
+    // Mulai polling sebagai backup — mendeteksi perubahan status dari webhook
+    startPolling();
+}
+
+// ── Status Polling (backup redirect mechanism) ───
+// Mengapa diperlukan:
+//   QRIS = pembayaran async di HP lain → webhook update DB
+//   → onSuccess callback embed kadang tidak fire di sandbox
+//   → polling ke order-status.php setiap 3 detik sebagai jaminan redirect
+let _pollTimer  = null;
+let _redirected = false; // flag agar tidak double redirect
+
+function startPolling() {
+    if (_pollTimer) return;
+    _pollTimer = setInterval(async () => {
+        try {
+            const res  = await fetch(`${API_BASE}/order-status.php?code=${orderCode}`);
+            const json = await res.json();
+            if (!json.success) return;
+            const status = json.data.order.payment_status;
+            if (status === 'paid') {
+                stopPolling();
+                doRedirect('success');
+            } else if (status === 'failed' || status === 'cancelled') {
+                stopPolling();
+                doRedirect('failed');
+            }
+        } catch(e) { /* silent — terus polling */ }
+    }, 3000);
+}
+
+function stopPolling() {
+    clearInterval(_pollTimer);
+    _pollTimer = null;
+}
+
+function doRedirect(status) {
+    if (_redirected) return; // guard double redirect
+    _redirected = true;
+    sessionStorage.removeItem('snap_token');
+    sessionStorage.removeItem('snap_client_key');
+    window.location.href = `payment-result.html?code=${orderCode}&status=${status}`;
+}
+
+// Bersihkan polling saat user navigasi pergi
+window.addEventListener('beforeunload', stopPolling);
+
+// ── Helpers ──────────────────────────────────────
+function formatRp(amount) {
+    return 'Rp ' + Number(amount).toLocaleString('id-ID');
+}
+
+function esc(str) {
+    return String(str)
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+let _toastTimer;
+function showToast(msg, type) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.className   = 'toast' + (type ? ' ' + type : '');
+    clearTimeout(_toastTimer);
+    _toastTimer = setTimeout(() => el.classList.add('hidden'), 4000);
+}
+
+init();
