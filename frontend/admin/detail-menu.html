@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Detail Menu – Menu Admin</title>
+  <link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+<div class="layout">
+
+  <!-- ══════════════ SIDEBAR ══════════════ -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-mark">M</div>
+      <div class="brand-name"><strong>Menu</strong><span>Admin</span></div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <span class="nav-section-label">Utama</span>
+
+      <a href="#" class="nav-link">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+          <rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/>
+          <rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/>
+        </svg>
+        <span class="nav-label">Dashboard</span>
+      </a>
+
+      <a href="kelola-menu.html" class="nav-link active">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+          <path d="M9 5h11M9 12h11M9 19h11M4.5 5h.01M4.5 12h.01M4.5 19h.01"/>
+        </svg>
+        <span class="nav-label">Kelola Menu</span>
+      </a>
+
+      <a href="#" class="nav-link">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+          <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/>
+          <line x1="7" y1="7" x2="7.01" y2="7" stroke-width="2.5" stroke-linecap="round"/>
+        </svg>
+        <span class="nav-label">Kategori</span>
+      </a>
+
+      <a href="#" class="nav-link">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+          <rect x="3" y="3" width="18" height="18" rx="2"/>
+          <circle cx="8.5" cy="8.5" r="1.5"/>
+          <path d="M21 15l-5-5L5 21"/>
+        </svg>
+        <span class="nav-label">Galeri Gambar</span>
+      </a>
+
+      <a href="#" class="nav-link">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+          <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+        </svg>
+        <span class="nav-label">Laporan</span>
+      </a>
+
+      <div class="nav-divider"></div>
+
+      <a href="#" class="nav-link">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+          <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/>
+        </svg>
+        <span class="nav-label">Notifikasi</span>
+        <span class="nav-badge">2</span>
+      </a>
+
+      <a href="#" class="nav-link">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
+        </svg>
+        <span class="nav-label">Pengaturan</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-user">
+      <div class="user-avatar">AB</div>
+      <div class="user-meta">
+        <span class="user-name">Admin Budi</span>
+        <span class="user-role">Administrator</span>
+      </div>
+      <span class="user-chevron">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </span>
+    </div>
+  </aside>
+
+  <!-- ══════════════ MAIN CONTENT ══════════════ -->
+  <main class="main-content">
+    <div class="page-wrapper">
+
+      <!-- Breadcrumb -->
+      <div class="breadcrumb">
+        <a href="#">Beranda</a>
+        <span class="breadcrumb-sep">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="9 18 15 12 9 6"/>
+          </svg>
+        </span>
+        <a href="kelola-menu.html">Kelola Menu</a>
+        <span class="breadcrumb-sep">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="9 18 15 12 9 6"/>
+          </svg>
+        </span>
+        <span class="breadcrumb-cur" id="bcTitle">Detail Menu</span>
+      </div>
+
+      <!-- Back button -->
+      <a href="kelola-menu.html" class="btn-back-nav">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polyline points="15 18 9 12 15 6"/>
+        </svg>
+        Kembali ke Kelola Menu
+      </a>
+
+      <!-- Detail content -->
+      <div id="detailContent">
+        <!-- Skeleton -->
+        <div class="detail-grid">
+          <div class="detail-product-card">
+            <div class="skeleton" style="height:240px; border-radius:0"></div>
+            <div class="detail-product-info">
+              <div class="skeleton sk-text sk-w-40 sk-mb-2" style="height:18px;margin-bottom:12px"></div>
+              <div class="skeleton sk-text sk-w-32 sk-mb-2"></div>
+              <div class="skeleton sk-text sk-w-24"></div>
+            </div>
+          </div>
+          <div class="detail-cards">
+            <div class="info-card">
+              <div class="info-card-header"><div class="skeleton sk-text sk-w-32"></div></div>
+              <div class="info-card-body">
+                <div class="skeleton sk-text sk-w-40 sk-mb-2"></div>
+                <div class="skeleton sk-text sk-w-32"></div>
+              </div>
+            </div>
+            <div class="info-card">
+              <div class="info-card-header"><div class="skeleton sk-text sk-w-24"></div></div>
+              <div class="info-card-body">
+                <div class="skeleton sk-text sk-w-40 sk-mb-2"></div>
+                <div class="skeleton sk-text sk-w-32"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+</div>
+
+<!-- Toast -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script src="js/detail-menu.js"></script>
+</body>
+</html>
