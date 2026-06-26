@@ -23,6 +23,9 @@ RUN a2enmod rewrite headers
 # Izinkan .htaccess di semua folder
 RUN sed -i 's/AllowOverride None/AllowOverride All/g' /etc/apache2/apache2.conf
 
+# Samakan uid www-data dengan host user (uid 1000) agar PHP bisa write ke bind mount
+RUN usermod -u 1000 www-data && groupmod -g 1000 www-data
+
 # Direktori kerja Apache
 WORKDIR /var/www/html
 

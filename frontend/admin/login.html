@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login – Menu Admin</title>
+  <link rel="stylesheet" href="css/admin.css">
+  <style>
+    body { display:flex; align-items:center; justify-content:center; min-height:100vh; background:var(--bg); }
+    .login-wrap { width:100%; max-width:400px; padding:20px; }
+    .login-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--r-xl); padding:36px 32px; box-shadow:var(--shadow-md); }
+    .login-brand { display:flex; align-items:center; gap:10px; margin-bottom:28px; }
+    .login-brand .brand-mark { width:36px; height:36px; background:var(--accent); border-radius:var(--r); display:flex; align-items:center; justify-content:center; color:#fff; font-size:15px; font-weight:800; }
+    .login-brand-name { font-size:15px; font-weight:700; color:var(--tx); }
+    .login-brand-name span { color:var(--tx-muted); font-weight:400; }
+    .login-title { font-size:18px; font-weight:700; color:var(--tx); margin-bottom:4px; }
+    .login-sub { font-size:13px; color:var(--tx-muted); margin-bottom:24px; }
+    .login-form { display:flex; flex-direction:column; gap:16px; }
+    .login-error { background:var(--red-bg); border:1px solid #FCA5A5; border-radius:var(--r-sm); padding:10px 14px; font-size:13px; color:var(--red-tx); display:none; }
+    .login-error.show { display:block; }
+    .btn-login { width:100%; padding:10px; font-size:14px; font-weight:600; justify-content:center; }
+    .login-footer { text-align:center; font-size:12px; color:var(--tx-pale); margin-top:20px; }
+  </style>
+</head>
+<body>
+
+<div class="login-wrap">
+  <div class="login-card">
+
+    <div class="login-brand">
+      <div class="brand-mark">M</div>
+      <div class="login-brand-name"><strong>Menu</strong><span>Admin</span></div>
+    </div>
+
+    <h1 class="login-title">Masuk ke Dashboard</h1>
+    <p class="login-sub">Silakan masuk dengan akun administrator</p>
+
+    <div class="login-error" id="loginError"></div>
+
+    <div class="login-form">
+      <div class="form-group">
+        <label class="form-label">Username</label>
+        <input type="text" class="form-input" id="username" placeholder="Masukkan username" autocomplete="username">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input type="password" class="form-input" id="password" placeholder="Masukkan password" autocomplete="current-password">
+      </div>
+      <button class="btn btn-primary btn-login" id="btnLogin" onclick="doLogin()">
+        Masuk
+      </button>
+    </div>
+
+  </div>
+  <p class="login-footer">Restaurant QR Order System &copy; 2026</p>
+</div>
+
+<script>
+  // Jika sudah login, redirect ke dashboard
+  (async function() {
+    try {
+      const res  = await fetch('/backend/api/admin/auth.php', { credentials: 'include' });
+      const json = await res.json();
+      if (json.success) window.location.replace('dashboard.html');
+    } catch {}
+  })();
+
+  async function doLogin() {
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value;
+    const errEl    = document.getElementById('loginError');
+    const btnEl    = document.getElementById('btnLogin');
+
+    errEl.classList.remove('show');
+
+    if (!username || !password) {
+      showError('Username dan password wajib diisi');
+      return;
+    }
+
+    btnEl.disabled     = true;
+    btnEl.textContent  = 'Memproses...';
+
+    try {
+      const res  = await fetch('/backend/api/admin/auth.php', {
+        method:      'POST',
+        credentials: 'include',
+        headers:     { 'Content-Type': 'application/json' },
+        body:        JSON.stringify({ username, password }),
+      });
+      const json = await res.json();
+
+      if (json.success) {
+        window.location.replace('dashboard.html');
+      } else {
+        showError(json.message || 'Login gagal');
+      }
+    } catch {
+      showError('Tidak dapat terhubung ke server');
+    } finally {
+      btnEl.disabled    = false;
+      btnEl.textContent = 'Masuk';
+    }
+  }
+
+  function showError(msg) {
+    const el = document.getElementById('loginError');
+    el.textContent = msg;
+    el.classList.add('show');
+  }
+
+  // Enter key
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter') doLogin();
+  });
+</script>
+</body>
+</html>
