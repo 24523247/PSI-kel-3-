@@ -32,6 +32,8 @@ if ($method === 'GET') {
         $product['id']        = (int)$product['id'];
         $product['price']     = (int)$product['price'];
         $product['is_active'] = (int)$product['is_active'];
+        if (array_key_exists('cost_price', $product)) $product['cost_price'] = (float)$product['cost_price'];
+        if (array_key_exists('stock', $product))      $product['stock']      = $product['stock'] !== null ? (int)$product['stock'] : null;
         jsonResponse(['success' => true, 'data' => $product]);
     }
 
@@ -41,6 +43,8 @@ if ($method === 'GET') {
         $p['id']        = (int)$p['id'];
         $p['price']     = (int)$p['price'];
         $p['is_active'] = (int)$p['is_active'];
+        if (array_key_exists('cost_price', $p)) $p['cost_price'] = (float)$p['cost_price'];
+        if (array_key_exists('stock', $p))      $p['stock']      = $p['stock'] !== null ? (int)$p['stock'] : null;
     }
     jsonResponse(['success' => true, 'data' => $products]);
 }
@@ -73,11 +77,14 @@ if ($method === 'POST') {
         $imageUrl = $saved;
     }
 
+    $costPrice = (float)($body['cost_price'] ?? 0);
+    $stock     = isset($body['stock']) && $body['stock'] !== '' && $body['stock'] !== null ? (int)$body['stock'] : null;
+
     $stmt = $db->prepare('
-        INSERT INTO products (name, price, category, description, image_url, is_active)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO products (name, price, category, description, image_url, is_active, cost_price, stock)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     ');
-    $stmt->execute([$name, $price, $category, $description ?: null, $imageUrl ?: null, $isActive]);
+    $stmt->execute([$name, $price, $category, $description ?: null, $imageUrl ?: null, $isActive, $costPrice, $stock]);
     $newId = $db->lastInsertId();
 
     jsonResponse([
@@ -134,12 +141,15 @@ if ($method === 'PUT') {
         $imageUrl = $existing['image_url'];
     }
 
+    $costPrice = (float)($body['cost_price'] ?? 0);
+    $stock     = isset($body['stock']) && $body['stock'] !== '' && $body['stock'] !== null ? (int)$body['stock'] : null;
+
     $stmt = $db->prepare('
         UPDATE products
-        SET name = ?, price = ?, category = ?, description = ?, image_url = ?, is_active = ?
+        SET name = ?, price = ?, category = ?, description = ?, image_url = ?, is_active = ?, cost_price = ?, stock = ?
         WHERE id = ?
     ');
-    $stmt->execute([$name, $price, $category, $description ?: null, $imageUrl ?: null, $isActive, $id]);
+    $stmt->execute([$name, $price, $category, $description ?: null, $imageUrl ?: null, $isActive, $costPrice, $stock, $id]);
 
     jsonResponse(['success' => true, 'message' => 'Produk berhasil diperbarui']);
 }

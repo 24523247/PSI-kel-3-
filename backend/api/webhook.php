@@ -91,9 +91,57 @@ $stmt = $db->prepare('
 ');
 $stmt->execute([$paymentStatus, $orderCode]);
 
-if ($stmt->rowCount() === 0) {
-    // Order tidak ditemukan, tapi tetap balas OK agar Midtrans tidak retry terus
-    error_log("Webhook: order $orderCode tidak ditemukan");
+$rowsAffected = $stmt->rowCount();
+
+if ($rowsAffected === 0) {
+    // Order tidak ditemukan atau status sudah sama — Midtrans retry, abaikan
+    error_log("Webhook: order $orderCode tidak ditemukan atau status sudah $paymentStatus");
+}
+
+// ── Kurangi stok ketika status BARU menjadi 'paid' ────────────
+// rowsAffected > 0 memastikan ini hanya terjadi sekali (idempoten)
+if ($paymentStatus === 'paid' && $rowsAffected > 0) {
+    try {
+        $orderRow = $db->prepare('SELECT id FROM orders WHERE order_code = ?');
+        $orderRow->execute([$orderCode]);
+        $order = $orderRow->fetch();
+
+        if ($order) {
+            $itemsStmt = $db->prepare('SELECT product_id, qty FROM order_items WHERE order_id = ?');
+            $itemsStmt->execute([$order['id']]);
+            $items = $itemsStmt->fetchAll();
+
+            // GREATEST(0, stock - qty) mencegah stok jadi negatif
+            // AND stock IS NOT NULL → hanya produk yang tracking stok aktif
+            $stockStmt = $db->prepare('
+                UPDATE products
+                SET stock = GREATEST(0, stock - ?)
+                WHERE id = ? AND stock IS NOT NULL
+            ');
+            foreach ($items as $item) {
+                $stockStmt->execute([(int)$item['qty'], (int)$item['product_id']]);
+            }
+
+            // Auto-deactivate produk yang stoknya habis + catat ke system_notifications
+            $productIds   = array_map(fn($i) => (int)$i['product_id'], $items);
+            $placeholders = implode(',', array_fill(0, count($productIds), '?'));
+
+            $zeroStmt = $db->prepare(
+                "SELECT id, name FROM products WHERE id IN ($placeholders) AND stock = 0 AND is_active = 1"
+            );
+            $zeroStmt->execute($productIds);
+            $zeroProducts = $zeroStmt->fetchAll();
+
+            if (!empty($zeroProducts)) {
+                // Nonaktifkan semua produk yang stoknya habis sekaligus
+                $db->prepare("UPDATE products SET is_active = 0 WHERE id IN ($placeholders) AND stock = 0")
+                   ->execute($productIds);
+            }
+        }
+    } catch (PDOException $e) {
+        // Kolom stock belum ada (migration_manager.sql belum dijalankan) — skip
+        error_log("Webhook: gagal update stok - " . $e->getMessage());
+    }
 }
 
 // Midtrans butuh response 200 OK

@@ -57,6 +57,20 @@ $tableId = $table['id'];
 $orderItems  = [];
 $totalAmount = 0;
 
+// Deteksi kolom opsional
+$hasStockCol  = false;
+$hasCostCol   = false;
+$hasOiCostCol = false;
+try { $db->query("SELECT stock      FROM products   LIMIT 0"); $hasStockCol  = true; } catch (PDOException $e) {}
+try { $db->query("SELECT cost_price FROM products   LIMIT 0"); $hasCostCol   = true; } catch (PDOException $e) {}
+try { $db->query("SELECT cost_price FROM order_items LIMIT 0"); $hasOiCostCol = true; } catch (PDOException $e) {}
+
+$prodColArr = ['id', 'name', 'price'];
+if ($hasCostCol)  $prodColArr[] = 'cost_price';
+if ($hasStockCol) $prodColArr[] = 'stock';
+$prodCols = implode(', ', $prodColArr);
+$prodStmt = $db->prepare("SELECT {$prodCols} FROM products WHERE id = ? AND is_active = 1");
+
 foreach ($items as $item) {
     $productId = (int)($item['product_id'] ?? 0);
     $qty       = (int)($item['qty'] ?? 0);
@@ -66,22 +80,35 @@ foreach ($items as $item) {
     }
 
     // Ambil harga dari database
-    $stmt = $db->prepare('SELECT id, name, price FROM products WHERE id = ? AND is_active = 1');
-    $stmt->execute([$productId]);
-    $product = $stmt->fetch();
+    $prodStmt->execute([$productId]);
+    $product = $prodStmt->fetch();
 
     if (!$product) {
-        jsonResponse(['success' => false, 'message' => "Produk ID $productId tidak ditemukan"], 404);
+        jsonResponse(['success' => false, 'message' => "Menu tidak tersedia atau sudah tidak aktif"], 404);
     }
 
-    $price    = (float) $product['price'];
-    $subtotal = $price * $qty;
+    // Validasi stok jika tracking aktif
+    if ($hasStockCol && $product['stock'] !== null) {
+        if ((int)$product['stock'] === 0) {
+            jsonResponse(['success' => false, 'message' => "Menu \"{$product['name']}\" sedang habis"], 400);
+        }
+        if ($qty > (int)$product['stock']) {
+            jsonResponse([
+                'success' => false,
+                'message' => "Stok \"{$product['name']}\" tidak cukup. Tersedia: {$product['stock']}, diminta: {$qty}",
+            ], 400);
+        }
+    }
+
+    $price     = (float)$product['price'];
+    $costPrice = $hasCostCol ? (float)($product['cost_price'] ?? 0) : 0;
+    $subtotal  = $price * $qty;
 
     $orderItems[] = [
         'product_id' => $productId,
-        'name'       => $product['name'],
         'qty'        => $qty,
         'price'      => $price,
+        'cost_price' => $costPrice,
         'subtotal'   => $subtotal,
     ];
 
@@ -100,10 +127,17 @@ try {
     $stmt->execute([$orderCode, $tableId, $totalAmount, 'pending']);
     $orderId = $db->lastInsertId();
 
-    // Insert order items
-    $stmt = $db->prepare('INSERT INTO order_items (order_id, product_id, qty, price, subtotal) VALUES (?, ?, ?, ?, ?)');
-    foreach ($orderItems as $oi) {
-        $stmt->execute([$orderId, $oi['product_id'], $oi['qty'], $oi['price'], $oi['subtotal']]);
+    // Insert order items — sertakan cost_price snapshot jika kolom sudah ada
+    if ($hasOiCostCol) {
+        $stmt = $db->prepare('INSERT INTO order_items (order_id, product_id, qty, price, cost_price, subtotal) VALUES (?, ?, ?, ?, ?, ?)');
+        foreach ($orderItems as $oi) {
+            $stmt->execute([$orderId, $oi['product_id'], $oi['qty'], $oi['price'], $oi['cost_price'], $oi['subtotal']]);
+        }
+    } else {
+        $stmt = $db->prepare('INSERT INTO order_items (order_id, product_id, qty, price, subtotal) VALUES (?, ?, ?, ?, ?)');
+        foreach ($orderItems as $oi) {
+            $stmt->execute([$orderId, $oi['product_id'], $oi['qty'], $oi['price'], $oi['subtotal']]);
+        }
     }
 
     $db->commit();

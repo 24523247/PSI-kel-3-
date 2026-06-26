@@ -24,10 +24,12 @@ if ($method === 'GET') {
             o.payment_status,
             o.created_at,
             t.table_name,
-            COUNT(oi.id) AS item_count
+            COUNT(oi.id) AS item_count,
+            GROUP_CONCAT(CONCAT(p.name, ' x', oi.qty) ORDER BY p.name SEPARATOR ', ') AS items_summary
         FROM orders o
         JOIN `tables` t ON t.id = o.table_id
         LEFT JOIN order_items oi ON oi.order_id = o.id
+        LEFT JOIN products p ON p.id = oi.product_id
         WHERE o.is_notified = 1
         GROUP BY o.id, o.order_code, o.total_amount, o.payment_status, o.created_at, t.table_name
         ORDER BY o.created_at DESC

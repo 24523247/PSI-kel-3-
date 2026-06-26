@@ -118,7 +118,7 @@ function renderTable() {
   document.getElementById('tableCount').textContent = `(${filtered.length})`;
 
   if (!filtered.length) {
-    tbody.innerHTML = `<tr><td colspan="8"><div class="table-empty">
+    tbody.innerHTML = `<tr><td colspan="10"><div class="table-empty">
       <div class="table-empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
       <h3>Tidak ada hasil</h3><p>Coba ubah kata kunci atau filter pencarian</p>
     </div></td></tr>`;
@@ -143,6 +143,16 @@ function renderTable() {
       </td>
       <td style="text-transform:capitalize">${esc(m.category)}</td>
       <td class="price-cell">${formatRp(m.price)}</td>
+      ${m.cost_price > 0
+        ? `<td class="price-cell" style="color:var(--tx-muted)">${formatRp(m.cost_price)}</td>`
+        : `<td style="text-align:right;color:var(--tx-pale)">—</td>`}
+      ${m.stock === null || m.stock === undefined
+        ? `<td class="center" style="color:var(--tx-pale)">—</td>`
+        : m.stock === 0
+        ? `<td class="center"><span class="badge badge-red"><span class="badge-dot"></span>Habis</span></td>`
+        : m.stock <= 5
+        ? `<td class="center"><span class="badge badge-yellow"><span class="badge-dot"></span>${m.stock}</span></td>`
+        : `<td class="center" style="font-weight:600">${m.stock}</td>`}
       <td>
         ${m.is_active == 1
           ? `<span class="badge badge-green"><span class="badge-dot"></span>Aktif</span>`
@@ -229,6 +239,8 @@ function openEditModal(id) {
   document.getElementById('fieldDesc').value          = item.description || '';
   document.getElementById('fieldHarga').value         = formatNumber(item.price);
   document.getElementById('fieldStatus').value        = item.is_active ? 'aktif' : 'nonaktif';
+  document.getElementById('fieldHPP').value           = item.cost_price > 0 ? formatNumber(item.cost_price) : '';
+  document.getElementById('fieldStok').value          = item.stock !== null && item.stock !== undefined ? item.stock : '';
 
   // Preview gambar jika ada
   const preview     = document.getElementById('uploadPreview');
@@ -253,7 +265,7 @@ function closeModal() {
 }
 
 function resetForm() {
-  ['fieldName','fieldKategori','fieldDesc','fieldHarga'].forEach(id => {
+  ['fieldName','fieldKategori','fieldDesc','fieldHarga','fieldHPP','fieldStok'].forEach(id => {
     document.getElementById(id).value = '';
   });
   document.getElementById('fieldStatus').value  = 'aktif';
@@ -288,7 +300,10 @@ async function saveMenu() {
   const previewSrc  = document.getElementById('uploadPreview').src;
   const imageBase64 = previewSrc.startsWith('data:image') ? previewSrc : '';
 
-  const body = { name, category, description: desc, price, is_active: isActive, image_base64: imageBase64 };
+  const costPrice = parseHarga(document.getElementById('fieldHPP').value);
+  const stockRaw  = document.getElementById('fieldStok').value;
+  const stock     = stockRaw === '' ? null : parseInt(stockRaw, 10);
+  const body = { name, category, description: desc, price, is_active: isActive, image_base64: imageBase64, cost_price: costPrice, stock };
 
   const btnSave = document.getElementById('btnSave');
   btnSave.disabled   = true;

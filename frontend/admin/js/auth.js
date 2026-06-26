@@ -14,6 +14,11 @@ const API_BASE = '/backend/api/admin';
       window.location.replace('login.html');
       return;
     }
+    // Manager tidak boleh akses panel admin — redirect ke dashboard manager
+    if (json.user.role === 'manager') {
+      window.location.replace('/frontend/manager/dashboard.html');
+      return;
+    }
     // Isi nama user di sidebar jika ada elemen-nya
     const nameEl = document.getElementById('sidebarUserName');
     const roleEl = document.getElementById('sidebarUserRole');

@@ -47,6 +47,7 @@ function render(list) {
           <span class="notif-sep">·</span>
           <span style="font-weight:600;color:var(--accent)">${formatRp(n.total_amount)}</span>
         </div>
+        ${n.items_summary ? `<div style="font-size:12px;color:var(--tx);background:var(--bg);border:1px solid var(--border);border-radius:var(--r-sm);padding:5px 10px;margin-top:6px;margin-bottom:2px">${esc(n.items_summary)}</div>` : ''}
         <div class="notif-hint">Pembayaran sudah diterima — siap untuk dimasak</div>
       </div>
       <button class="btn btn-primary btn-sm notif-done-btn" onclick="dismiss(${n.id})">

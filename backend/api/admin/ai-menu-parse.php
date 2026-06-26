@@ -41,15 +41,26 @@ if (empty($apiKey)) {
     jsonResponse(['success' => false, 'message' => 'KOBOI_API_KEY belum diisi di backend/.env']);
 }
 
-// ── Ambil daftar produk saat ini (minimal: id, name, price, category, is_active) ──
-$db   = getDB();
-$stmt = $db->query('SELECT id, name, price, category, is_active FROM products ORDER BY category, name');
-$products = $stmt->fetchAll();
+// ── Ambil daftar produk saat ini ──────────────────────────
+$db = getDB();
+
+// Cek kolom tambahan dari migration_manager.sql
+$hasCostCol  = false;
+$hasStockCol = false;
+try { $db->query("SELECT cost_price FROM products LIMIT 0"); $hasCostCol  = true; } catch (PDOException $e) {}
+try { $db->query("SELECT stock FROM products LIMIT 0");      $hasStockCol = true; } catch (PDOException $e) {}
+
+$extraCols = ($hasCostCol ? ', cost_price' : '') . ($hasStockCol ? ', stock' : '');
+$stmt      = $db->query("SELECT id, name, price, category, is_active{$extraCols} FROM products ORDER BY category, name");
+$products  = $stmt->fetchAll();
 
 $menuList = '';
 foreach ($products as $p) {
-    $status    = (int)$p['is_active'] === 1 ? 'aktif' : 'nonaktif';
-    $menuList .= "ID:{$p['id']} | {$p['name']} | Rp" . number_format((float)$p['price'], 0, ',', '.') . " | {$p['category']} | {$status}\n";
+    $status   = (int)$p['is_active'] === 1 ? 'aktif' : 'nonaktif';
+    $costStr  = $hasCostCol  ? ' | HPP:Rp' . number_format((float)($p['cost_price'] ?? 0), 0, ',', '.') : '';
+    $stockVal = $hasStockCol ? ($p['stock'] ?? null) : null;
+    $stockStr = $hasStockCol ? ' | stok:' . ($stockVal === null ? 'tidak_tracking' : ($stockVal == 0 ? 'HABIS' : $stockVal)) : '';
+    $menuList .= "ID:{$p['id']} | {$p['name']} | Rp" . number_format((float)$p['price'], 0, ',', '.') . "{$costStr} | {$p['category']}{$stockStr} | {$status}\n";
 }
 
 // ── System prompt ──────────────────────────────────────────
@@ -58,7 +69,7 @@ Kamu adalah AI assistant untuk manajemen menu restoran. Tugasmu HANYA menerjemah
 
 SKEMA DATABASE:
 Tabel: products
-Kolom: id (INT, auto), name (VARCHAR), price (INT, Rupiah), category (VARCHAR: 'makanan'|'minuman'), description (TEXT, opsional), is_active (TINYINT: 1=aktif, 0=nonaktif)
+Kolom: id (INT, auto), name (VARCHAR), price (INT, Rupiah), category (VARCHAR: 'makanan'|'minuman'), description (TEXT, opsional), is_active (TINYINT: 1=aktif, 0=nonaktif), cost_price (DECIMAL, HPP/harga pokok, default 0), stock (INT, NULL=tidak tracking, 0=habis, angka=jumlah stok)
 
 ATURAN WAJIB:
 1. DELETE = UPDATE products SET is_active = 0 WHERE id = ? (JANGAN pakai DELETE FROM)
