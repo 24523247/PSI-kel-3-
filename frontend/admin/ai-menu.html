@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI CRUD Menu – Admin</title>
+  <link rel="stylesheet" href="css/admin.css">
+  <style>
+    /* ── Chat Layout ── */
+    .ai-layout {
+      display: grid;
+      grid-template-columns: 1fr 300px;
+      gap: 20px;
+      height: calc(100vh - 160px);
+      min-height: 500px;
+    }
+    @media (max-width: 900px) { .ai-layout { grid-template-columns: 1fr; } }
+
+    /* ── Chat Panel ── */
+    .chat-panel {
+      display: flex;
+      flex-direction: column;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r-xl);
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+    }
+    .chat-header {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+    .chat-header-icon {
+      width: 32px; height: 32px;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      border-radius: var(--r-sm);
+      display: flex; align-items: center; justify-content: center;
+      color: #fff;
+    }
+    .chat-header-icon svg { width: 16px; height: 16px; }
+    .chat-header-title { font-size: 14px; font-weight: 700; color: var(--tx); }
+    .chat-header-sub   { font-size: 11.5px; color: var(--tx-muted); }
+
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      scroll-behavior: smooth;
+    }
+
+    /* ── Message Bubbles ── */
+    .msg { display: flex; gap: 8px; max-width: 88%; }
+    .msg-user { align-self: flex-end; flex-direction: row-reverse; }
+    .msg-ai   { align-self: flex-start; }
+    .msg-sys  { align-self: center; max-width: 100%; }
+
+    .msg-avatar {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700;
+      flex-shrink: 0; margin-top: 2px;
+    }
+    .msg-user .msg-avatar { background: var(--accent); color: #fff; }
+    .msg-ai   .msg-avatar { background: linear-gradient(135deg,#6366f1,#8b5cf6); color: #fff; }
+
+    .msg-bubble {
+      padding: 10px 14px;
+      border-radius: 16px;
+      font-size: 13px;
+      line-height: 1.55;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .msg-user .msg-bubble {
+      background: var(--accent);
+      color: #fff;
+      border-bottom-right-radius: 4px;
+    }
+    .msg-ai .msg-bubble {
+      background: var(--bg);
+      color: var(--tx);
+      border: 1px solid var(--border);
+      border-bottom-left-radius: 4px;
+    }
+    .msg-sys .msg-bubble {
+      background: transparent;
+      color: var(--tx-pale);
+      font-size: 11.5px;
+      text-align: center;
+      border: none;
+      padding: 4px 0;
+    }
+
+    /* ── SQL Preview Block ── */
+    .sql-preview {
+      margin-top: 10px;
+      background: #1e1e2e;
+      border-radius: var(--r-sm);
+      overflow: hidden;
+    }
+    .sql-preview-header {
+      padding: 6px 12px;
+      background: #2a2a3e;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .sql-preview-label {
+      font-size: 10.5px; font-weight: 600;
+      color: #a0a0c0; text-transform: uppercase; letter-spacing: .5px;
+    }
+    .sql-preview-badge {
+      font-size: 10px; padding: 2px 7px;
+      border-radius: 10px; font-weight: 600;
+    }
+    .badge-intent-create { background: #22c55e20; color: #22c55e; }
+    .badge-intent-read   { background: #3b82f620; color: #60a5fa; }
+    .badge-intent-update { background: #f59e0b20; color: #fbbf24; }
+    .badge-intent-delete { background: #ef444420; color: #f87171; }
+    .badge-intent-unknown{ background: #64748b20; color: #94a3b8; }
+
+    .sql-code {
+      padding: 12px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      color: #e2e8f0;
+      overflow-x: auto;
+      line-height: 1.6;
+    }
+    .sql-params {
+      padding: 6px 12px 10px;
+      font-size: 11px;
+      color: #94a3b8;
+      font-family: 'Courier New', monospace;
+    }
+
+    .confirm-actions {
+      display: flex; gap: 8px;
+      margin-top: 10px;
+    }
+    .btn-confirm {
+      padding: 7px 16px; font-size: 12.5px; font-weight: 600;
+      border-radius: var(--r-sm); border: none; cursor: pointer;
+      display: flex; align-items: center; gap: 5px; transition: opacity .15s;
+    }
+    .btn-confirm:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-confirm-ok  { background: var(--accent); color: #fff; }
+    .btn-confirm-ok:hover:not(:disabled)  { opacity: .88; }
+    .btn-confirm-no  { background: var(--bg); color: var(--tx-muted); border: 1px solid var(--border); }
+    .btn-confirm-no:hover:not(:disabled)  { background: var(--border); }
+
+    /* ── Result ── */
+    .result-block {
+      margin-top: 10px;
+      padding: 10px 14px;
+      border-radius: var(--r-sm);
+      font-size: 12.5px;
+    }
+    .result-ok    { background: #22c55e15; border: 1px solid #22c55e30; color: #16a34a; }
+    .result-err   { background: #ef444415; border: 1px solid #ef444430; color: #dc2626; }
+    .result-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
+    .result-table th { background: var(--bg); padding: 6px 10px; text-align: left; font-weight: 600; color: var(--tx-muted); border-bottom: 1px solid var(--border); }
+    .result-table td { padding: 6px 10px; border-bottom: 1px solid var(--border); color: var(--tx); }
+    .result-table tr:last-child td { border-bottom: none; }
+
+    /* ── Typing indicator ── */
+    .typing { display: flex; gap: 4px; align-items: center; padding: 12px 14px; }
+    .typing span {
+      width: 6px; height: 6px;
+      background: var(--tx-pale);
+      border-radius: 50%;
+      animation: blink 1.2s infinite;
+    }
+    .typing span:nth-child(2) { animation-delay: .2s; }
+    .typing span:nth-child(3) { animation-delay: .4s; }
+    @keyframes blink { 0%,80%,100% { opacity: .2; transform: scale(.8); } 40% { opacity: 1; transform: scale(1); } }
+
+    /* ── Input Bar ── */
+    .chat-input-wrap {
+      padding: 12px 16px;
+      border-top: 1px solid var(--border);
+      display: flex; gap: 8px; align-items: flex-end;
+      flex-shrink: 0;
+    }
+    .chat-input {
+      flex: 1;
+      resize: none;
+      border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+      padding: 9px 14px;
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--tx);
+      background: var(--bg);
+      outline: none;
+      max-height: 120px;
+      overflow-y: auto;
+      transition: border-color .15s;
+    }
+    .chat-input:focus { border-color: var(--accent); }
+    .chat-input::placeholder { color: var(--tx-pale); }
+    .btn-send {
+      width: 38px; height: 38px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      border: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      transition: opacity .15s;
+    }
+    .btn-send:hover:not(:disabled) { opacity: .85; }
+    .btn-send:disabled { opacity: .4; cursor: not-allowed; }
+    .btn-send svg { width: 16px; height: 16px; }
+
+    /* ── Log Panel ── */
+    .log-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r-xl);
+      display: flex; flex-direction: column;
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+    }
+    .log-panel-header {
+      padding: 13px 16px;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px; font-weight: 700; color: var(--tx);
+      flex-shrink: 0;
+    }
+    .log-list {
+      flex: 1; overflow-y: auto;
+      padding: 10px;
+      display: flex; flex-direction: column; gap: 6px;
+    }
+    .log-item {
+      padding: 9px 11px;
+      border-radius: var(--r-sm);
+      border: 1px solid var(--border);
+      font-size: 11.5px; cursor: pointer;
+      transition: background .1s;
+    }
+    .log-item:hover { background: var(--bg); }
+    .log-item-pending {
+      border-color: #d97706;
+      background: #f59e0b08;
+    }
+    .log-item-pending:hover { background: #f59e0b12; }
+    .log-item-prompt { font-weight: 600; color: var(--tx); margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .log-item-meta   { display: flex; gap: 6px; align-items: center; color: var(--tx-pale); }
+    .log-status { padding: 1px 6px; border-radius: 8px; font-size: 10px; font-weight: 600; }
+    .log-status-executed  { background: #22c55e15; color: #16a34a; }
+    .log-status-cancelled { background: #64748b15; color: #64748b; }
+    .log-status-failed    { background: #ef444415; color: #dc2626; }
+    .log-status-pending   { background: #f59e0b15; color: #d97706; }
+
+    /* ── Suggestion chips ── */
+    .suggestion-chips {
+      padding: 0 16px 10px;
+      display: flex; gap: 6px; flex-wrap: wrap;
+    }
+    .chip {
+      padding: 5px 11px;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      font-size: 11.5px; color: var(--tx-muted);
+      cursor: pointer; background: var(--bg);
+      transition: all .13s;
+      white-space: nowrap;
+    }
+    .chip:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-bg, #EEF2FF); }
+  </style>
+</head>
+<body>
+<div class="layout">
+
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-mark">M</div>
+      <div class="brand-name"><strong>Menu</strong><span>Admin</span></div>
+    </div>
+    <nav class="sidebar-nav">
+      <span class="nav-section-label">Utama</span>
+      <a href="dashboard.html" class="nav-link"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/></svg><span class="nav-label">Dashboard</span></a>
+      <a href="ai-menu.html" class="nav-link active"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg><span class="nav-label">AI CRUD Menu</span></a>
+      <a href="kelola-menu.html" class="nav-link"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M9 5h11M9 12h11M9 19h11M4.5 5h.01M4.5 12h.01M4.5 19h.01"/></svg><span class="nav-label">Kelola Menu</span></a>
+      <a href="kategori.html" class="nav-link"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7" stroke-width="2.5" stroke-linecap="round"/></svg><span class="nav-label">Kategori</span></a>
+      <a href="galeri.html" class="nav-link"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg><span class="nav-label">Galeri Gambar</span></a>
+      <a href="laporan.html" class="nav-link"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg><span class="nav-label">Laporan</span></a>
+      <div class="nav-divider"></div>
+      <a href="notifikasi.html" class="nav-link"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg><span class="nav-label">Notifikasi</span></a>
+      <a href="pengaturan.html" class="nav-link"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg><span class="nav-label">Pengaturan</span></a>
+    </nav>
+    <div class="sidebar-user" onclick="adminLogout()">
+      <div class="user-avatar">AB</div>
+      <div class="user-meta"><span class="user-name" id="sidebarUserName">Administrator</span><span class="user-role" id="sidebarUserRole">Admin</span></div>
+      <span class="user-chevron" title="Logout"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></span>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <div class="page-wrapper">
+
+      <div class="breadcrumb">
+        <a href="dashboard.html">Beranda</a>
+        <span class="breadcrumb-sep"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></span>
+        <span class="breadcrumb-cur">AI CRUD Menu</span>
+      </div>
+
+      <div class="page-header" style="margin-bottom:16px">
+        <div class="page-title-row">
+          <div>
+            <h1>AI CRUD Menu</h1>
+            <p class="page-subtitle">Kelola menu menggunakan perintah bahasa natural</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Suggestion Chips -->
+      <div class="suggestion-chips" id="suggestionChips">
+        <button class="chip" onclick="useChip(this)">Tampilkan semua menu</button>
+        <button class="chip" onclick="useChip(this)">Tampilkan menu minuman</button>
+        <button class="chip" onclick="useChip(this)">Tambah menu Ayam Geprek harga 15000 kategori makanan</button>
+        <button class="chip" onclick="useChip(this)">Tampilkan menu yang nonaktif</button>
+      </div>
+
+      <div class="ai-layout">
+
+        <!-- Chat Panel -->
+        <div class="chat-panel">
+          <div class="chat-header">
+            <div class="chat-header-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg>
+            </div>
+            <div>
+              <div class="chat-header-title">Asisten AI Menu</div>
+              <div class="chat-header-sub">SQL divalidasi backend — AI hanya menerjemahkan</div>
+            </div>
+          </div>
+
+          <div class="chat-messages" id="chatMessages">
+            <!-- Pesan welcome -->
+            <div class="msg msg-sys">
+              <div class="msg-bubble">Hari ini, <span id="todayDate"></span></div>
+            </div>
+            <div class="msg msg-ai">
+              <div class="msg-avatar">AI</div>
+              <div class="msg-bubble">Halo! Saya siap membantu mengelola data menu. Ketik perintah dalam bahasa natural, contoh:<br><br>• <em>Tambah menu Ayam Geprek harga 15000 kategori makanan</em><br>• <em>Ubah harga Es Teh menjadi 6000</em><br>• <em>Nonaktifkan menu Gado-Gado</em><br>• <em>Tampilkan semua menu minuman</em></div>
+            </div>
+          </div>
+
+          <div class="chat-input-wrap">
+            <textarea class="chat-input" id="chatInput" rows="1"
+              placeholder="Ketik perintah... (Enter untuk kirim, Shift+Enter baris baru)"
+              oninput="autoResize(this)"></textarea>
+            <button class="btn-send" id="btnSend" onclick="sendMessage()" title="Kirim">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Log Panel -->
+        <div class="log-panel">
+          <div class="log-panel-header">Log Aktivitas</div>
+          <div class="log-list" id="logList">
+            <div style="padding:20px;text-align:center;font-size:12px;color:var(--tx-pale)">Memuat...</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="js/auth.js"></script>
+<script src="js/ai-menu.js"></script>
+</body>
+</html>

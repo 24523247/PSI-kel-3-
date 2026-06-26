@@ -1,50 +1,89 @@
-# 🍜 Restaurant QR Order System
+# Restaurant QR Order System
 
-Sistem pemesanan restoran berbasis QR Code menggunakan **PHP Vanilla**, **MySQL**, dan **Midtrans Sandbox**.
+Sistem pemesanan restoran berbasis QR Code menggunakan **PHP Vanilla**, **MySQL**, dan **Midtrans Sandbox**, dilengkapi **panel admin** dengan fitur AI CRUD Menu berbasis bahasa natural.
 
 Project ini dibuat untuk **belajar**, bukan production. Fokus pada:
 - Alur pemesanan dari scan QR sampai pembayaran
 - Cara kerja REST API sederhana dengan PHP
 - Integrasi Midtrans Snap tanpa Composer
+- Panel admin dengan manajemen menu, laporan, dan notifikasi dapur
+- AI agent untuk CRUD menu menggunakan bahasa natural (KoboiLLM)
 - Docker untuk development environment
 
 ---
 
-## 📁 Struktur Folder
+## Struktur Folder
 
 ```
-restaurant-qr/
+PSI-kel-3-/
 ├── backend/
 │   ├── api/
-│   │   ├── table.php           ← GET: info meja
-│   │   ├── products.php        ← GET: daftar menu
-│   │   ├── create-order.php    ← POST: buat pesanan
-│   │   ├── create-payment.php  ← POST: buat transaksi Midtrans
-│   │   ├── order-status.php    ← GET: cek status pesanan
-│   │   └── webhook.php         ← POST: callback dari Midtrans
+│   │   ├── table.php              ← GET: info meja
+│   │   ├── products.php           ← GET: daftar menu aktif
+│   │   ├── create-order.php       ← POST: buat pesanan
+│   │   ├── create-payment.php     ← POST: buat transaksi Midtrans
+│   │   ├── order-status.php       ← GET: cek status pesanan
+│   │   ├── webhook.php            ← POST: callback dari Midtrans
+│   │   ├── ai-recommend.php       ← POST: rekomendasi AI
+│   │   └── admin/
+│   │       ├── middleware.php     ← Session guard admin
+│   │       ├── auth.php           ← Login / logout admin
+│   │       ├── stats.php          ← Statistik dashboard
+│   │       ├── menu.php           ← CRUD menu
+│   │       ├── orders.php         ← Daftar pesanan
+│   │       ├── order-detail.php   ← Detail pesanan + items
+│   │       ├── notifications.php  ← Notifikasi dapur
+│   │       ├── ai-menu-helpers.php← Validasi SQL AI
+│   │       ├── ai-menu-parse.php  ← NL → intent + SQL
+│   │       ├── ai-menu-confirm.php← Eksekusi SQL terkonfirmasi
+│   │       └── ai-menu-history.php← Riwayat perintah AI
 │   ├── midtrans-sdk/
-│   │   ├── Snap.php            ← Entry point SDK (di-require di create-payment.php)
-│   │   └── lib/
-│   │       ├── Config.php      ← Konfigurasi Midtrans
-│   │       ├── HttpClient.php  ← HTTP request pakai cURL
-│   │       └── Snap.php        ← Class Snap::getSnapToken()
-│   └── config.php              ← Konfigurasi DB & Midtrans
+│   ├── config.php
+│   ├── env.php
+│   ├── .env                       ← API keys (git-ignored)
+│   └── .env.example
 ├── frontend/
-│   ├── index.html              ← Simulasi QR / daftar meja
-│   ├── table.html              ← Halaman menu & pemesanan
-│   ├── payment-result.html     ← Halaman hasil pembayaran
-│   └── style.css               ← Styling
+│   ├── index.html                 ← Simulator QR / daftar meja
+│   ├── table.html                 ← Halaman menu & pemesanan
+│   ├── checkout.html              ← Midtrans SNAP embed
+│   ├── payment-result.html        ← Hasil pembayaran
+│   ├── css/style.css
+│   ├── js/
+│   ├── image/
+│   └── admin/
+│       ├── login.html
+│       ├── dashboard.html
+│       ├── kelola-menu.html
+│       ├── detail-menu.html
+│       ├── kategori.html
+│       ├── galeri.html
+│       ├── laporan.html
+│       ├── notifikasi.html
+│       ├── ai-menu.html
+│       ├── pengaturan.html
+│       ├── css/admin.css
+│       └── js/
+│           ├── auth.js
+│           ├── kelola-menu.js
+│           ├── detail-menu.js
+│           ├── laporan.js
+│           ├── notifikasi.js
+│           └── ai-menu.js
 ├── database/
-│   └── init.sql                ← Schema + data dummy
+│   ├── init.sql                   ← Schema + data dummy (auto-run)
+│   ├── migration_add_columns.sql
+│   ├── migration_admin.sql        ← Tabel admin_users
+│   ├── migration_notifications.sql← Kolom is_notified + TRIGGER
+│   ├── migration_ai_menu_logs.sql ← Tabel ai_menu_logs
+│   └── migration_payment_logs_order_id.sql
 ├── docker/
-│   └── Dockerfile              ← PHP 8.2 + Apache
-├── docker-compose.yml
-└── README.md
+│   └── Dockerfile
+└── docker-compose.yml
 ```
 
 ---
 
-## 🚀 Cara Menjalankan
+## Cara Menjalankan
 
 ### Prasyarat
 
@@ -52,7 +91,6 @@ Pastikan sudah terinstall:
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/) (Windows/Mac) atau Docker Engine (Linux)
 - Browser modern
 
-Cek apakah Docker sudah berjalan:
 ```bash
 docker --version
 docker compose version
@@ -63,260 +101,217 @@ docker compose version
 ### Langkah 1: Clone / Download Project
 
 ```bash
-# Jika pakai git
 git clone <url-repo>
-cd restaurant-qr
-
-# Atau ekstrak ZIP, lalu masuk ke folder
-cd restaurant-qr
+cd PSI-kel-3-
 ```
 
 ---
 
-### Langkah 2: Isi Midtrans API Key
+### Langkah 2: Isi API Keys
 
-Buka file **`backend/config.php`**, ganti dua baris ini:
+Buat file `backend/.env` dari contoh:
 
-```php
-define('MIDTRANS_SERVER_KEY', 'SB-Mid-server-GANTI_DENGAN_SERVER_KEY_KAMU');
-define('MIDTRANS_CLIENT_KEY', 'SB-Mid-client-GANTI_DENGAN_CLIENT_KEY_KAMU');
+```bash
+cp backend/.env.example backend/.env
 ```
 
-Cara mendapatkan API Key:
-1. Daftar/login ke [https://dashboard.sandbox.midtrans.com](https://dashboard.sandbox.midtrans.com)
-2. Klik **Settings** → **Access Keys**
+Isi dengan nilai yang sesuai:
+
+```env
+DB_HOST=mysql
+DB_NAME=restaurant_db
+DB_USER=root
+DB_PASS=root123
+
+MIDTRANS_SERVER_KEY=SB-Mid-server-xxxxx
+MIDTRANS_CLIENT_KEY=SB-Mid-client-xxxxx
+MIDTRANS_IS_PRODUCTION=false
+
+KOBOI_API_KEY=sk-xxxxx
+```
+
+Cara mendapatkan API Key Midtrans:
+1. Daftar/login ke https://dashboard.sandbox.midtrans.com
+2. **Settings** → **Access Keys**
 3. Salin **Sandbox Server Key** dan **Sandbox Client Key**
 
-> ⚠️ **Penting:**
-> - **Server Key** = rahasia, hanya dipakai di PHP (backend). Jangan pernah taruh di HTML/JS.
-> - **Client Key** = aman ditampilkan di frontend (HTML). Dipakai oleh `snap.js`.
-
-Setelah isi Server Key di `config.php`, buka juga **`frontend/table.html`** dan ganti:
-```html
-<script
-    src="https://app.sandbox.midtrans.com/snap/snap.js"
-    data-client-key="SB-Mid-client-GANTI_DENGAN_CLIENT_KEY_KAMU">
-</script>
-```
+Cara mendapatkan KoboiLLM API Key:
+- Daftar di https://lite.koboillm.com dan buat API key
 
 ---
 
 ### Langkah 3: Jalankan Docker
 
 ```bash
-# Di folder project (yang ada docker-compose.yml)
 docker compose up -d
 ```
 
-Perintah ini akan:
-1. Build image PHP + Apache (hanya pertama kali, sekitar 1-2 menit)
-2. Jalankan container MySQL dan buat database otomatis dari `database/init.sql`
-3. Jalankan container phpMyAdmin
-4. Mount folder `backend/` dan `frontend/` langsung ke Apache
-
-Cek apakah semua container berjalan:
+Cek status:
 ```bash
 docker compose ps
 ```
 
-Output yang diharapkan:
-```
-NAME                    STATUS
-restaurant_app          running
-restaurant_mysql        running
-restaurant_phpmyadmin   running
+---
+
+### Langkah 4: Jalankan Migrasi Database
+
+```bash
+# Tabel admin_users
+docker compose exec mysql mysql -uroot -proot123 restaurant_db < database/migration_admin.sql
+
+# Kolom is_notified + TRIGGER notifikasi dapur
+docker compose exec mysql mysql -uroot -proot123 restaurant_db < database/migration_notifications.sql
+
+# Tabel ai_menu_logs (AI CRUD Menu)
+docker compose exec mysql mysql -uroot -proot123 restaurant_db < database/migration_ai_menu_logs.sql
+
+# Backfill order_id di payment_logs (opsional)
+docker compose exec mysql mysql -uroot -proot123 restaurant_db < database/migration_payment_logs_order_id.sql
 ```
 
 ---
 
-### Langkah 4: Buka Browser
+### Langkah 5: Buat Akun Admin
+
+Akses URL berikut **satu kali** di browser untuk membuat akun admin default:
+
+```
+http://localhost:8080/backend/api/admin/seed.php
+```
+
+Setelah akun terbuat, **hapus file `seed.php`** dari server.
+
+---
+
+### Langkah 6: Buka Browser
 
 | URL | Keterangan |
 |-----|-----------|
 | http://localhost:8080/frontend/index.html | Halaman utama (simulasi QR) |
 | http://localhost:8080/frontend/table.html?table=meja-1 | Langsung ke Meja 1 |
-| http://localhost:8081 | phpMyAdmin (lihat isi database) |
+| http://localhost:8080/frontend/admin/login.html | Login panel admin |
+| http://localhost:8081 | phpMyAdmin (root / root123) |
 
 ---
 
-## 🔄 Alur Pemesanan Lengkap
+## Alur Pemesanan
 
 ```
 1. Tamu scan QR Code di meja
          ↓
 2. Browser buka: table.html?table=meja-1
          ↓
-3. JS fetch GET /api/table.php?code=meja-1
-   → validasi meja ada di database
+3. Validasi meja + load menu dari API
          ↓
-4. JS fetch GET /api/products.php
-   → tampilkan daftar menu
+4. [Opsional] Minta rekomendasi AI
          ↓
-5. Tamu pilih menu, klik "Buat Pesanan & Bayar"
+5. Tamu pilih menu → "Buat Pesanan & Bayar"
          ↓
-6. JS fetch POST /api/create-order.php
-   → simpan order + order_items ke database
-   → dapat order_code (contoh: ORD-20241201-ABC123)
+6. POST /api/create-order.php → simpan ke DB
          ↓
-7. JS fetch POST /api/create-payment.php
-   → PHP kirim data ke API Midtrans
-   → dapat snap_token
+7. POST /api/create-payment.php → dapat snap_token
          ↓
-8. snap.pay(snap_token) → popup Midtrans muncul
+8. snap.embed(token) → form pembayaran muncul
          ↓
-9. Tamu bayar (kartu/transfer/QRIS/dll)
+9. Tamu bayar (kartu/QRIS/dll)
          ↓
-10. Midtrans kirim POST ke /api/webhook.php
-    → PHP verifikasi signature
-    → update payment_status = 'paid'
+10. Midtrans kirim webhook → update payment_status='paid'
+    → TRIGGER otomatis set is_notified=1
          ↓
 11. Browser redirect ke payment-result.html
-    → tampilkan status pesanan
 ```
 
 ---
 
-## 🌐 API Reference
+## Panel Admin
 
-Semua endpoint menggunakan JSON.
+Login di `http://localhost:8080/frontend/admin/login.html`
 
-### GET `/backend/api/table.php?code=meja-1`
-
-Mengambil info meja berdasarkan kode.
-
-**Response sukses:**
-```json
-{
-  "success": true,
-  "data": {
-    "id": 1,
-    "table_code": "meja-1",
-    "table_name": "Meja 1"
-  }
-}
-```
+| Halaman | Fungsi |
+|---------|--------|
+| Dashboard | Statistik total menu, pesanan, revenue |
+| Kelola Menu | Tambah, edit, nonaktifkan produk |
+| Kategori | Filter menu berdasarkan kategori |
+| Galeri Gambar | Upload dan manajemen foto menu |
+| Laporan | Riwayat pesanan dengan detail item |
+| Notifikasi Dapur | Pesanan lunas siap dimasak (auto-refresh 10 detik) |
+| AI CRUD Menu | Kelola menu via perintah bahasa natural |
+| Pengaturan | Konfigurasi akun admin |
 
 ---
 
-### GET `/backend/api/products.php`
+## Fitur AI CRUD Menu
 
-Mengambil semua menu aktif.
+Kelola menu dengan perintah bahasa natural, dieksekusi hanya setelah konfirmasi admin.
 
-**Response sukses:**
-```json
-{
-  "success": true,
-  "data": [
-    { "id": 1, "name": "Nasi Goreng Spesial", "price": 25000, "category": "makanan" },
-    { "id": 7, "name": "Es Teh Manis", "price": 5000, "category": "minuman" }
-  ]
-}
+**Contoh perintah:**
 ```
+Tambah menu Ayam Geprek harga 15000 kategori makanan
+Ubah harga Es Teh menjadi 6000
+Nonaktifkan menu Gado-Gado
+Tampilkan semua menu minuman
+```
+
+**Alur:**
+1. Admin ketik perintah → AI menerjemahkan ke SQL
+2. SQL ditampilkan sebagai preview
+3. Admin klik "Konfirmasi Eksekusi"
+4. Backend re-validasi → eksekusi dalam transaksi
+
+**Keamanan:**
+- AI hanya boleh akses tabel `products`
+- DELETE selalu menjadi `UPDATE ... SET is_active = 0`
+- SQL divalidasi dua kali (parse + confirm)
+- Rate limit: 15 request per 5 menit per sesi
+- Semua perintah tercatat di `ai_menu_logs`
+
+**Chat persisten:** Saat kembali ke halaman AI CRUD Menu, seluruh riwayat percakapan direkonstruksi dari database. Perintah yang belum dikonfirmasi dapat dilanjutkan.
 
 ---
 
-### POST `/backend/api/create-order.php`
+## API Reference
 
-Membuat pesanan baru.
+### Client
 
-**Request body:**
-```json
-{
-  "table_code": "meja-1",
-  "items": [
-    { "product_id": 1, "qty": 2 },
-    { "product_id": 7, "qty": 1 }
-  ]
-}
-```
+| Method | Path | Keterangan |
+|--------|------|------------|
+| GET | `/backend/api/table.php?code=meja-1` | Info meja |
+| GET | `/backend/api/products.php` | Semua menu aktif |
+| GET | `/backend/api/client-config.php` | Midtrans client key |
+| POST | `/backend/api/create-order.php` | Buat pesanan |
+| POST | `/backend/api/create-payment.php` | Dapat snap_token |
+| GET | `/backend/api/order-status.php?code=ORD-...` | Status pesanan |
+| POST | `/backend/api/webhook.php` | Callback Midtrans |
+| POST | `/backend/api/ai-recommend.php` | Rekomendasi AI |
 
-**Response sukses:**
-```json
-{
-  "success": true,
-  "message": "Pesanan berhasil dibuat",
-  "data": {
-    "order_id": 1,
-    "order_code": "ORD-20241201-ABC123",
-    "total_amount": 55000
-  }
-}
-```
+### Admin (butuh session login)
 
----
-
-### POST `/backend/api/create-payment.php`
-
-Membuat transaksi Midtrans dan mendapatkan `snap_token`.
-
-**Request body:**
-```json
-{ "order_code": "ORD-20241201-ABC123" }
-```
-
-**Response sukses:**
-```json
-{
-  "success": true,
-  "snap_token": "xxxx-xxxx-xxxx",
-  "order_code": "ORD-20241201-ABC123"
-}
-```
+| Method | Path | Keterangan |
+|--------|------|------------|
+| POST | `/backend/api/admin/auth.php` | Login |
+| DELETE | `/backend/api/admin/auth.php` | Logout |
+| GET | `/backend/api/admin/stats.php` | Statistik dashboard |
+| GET/POST/PUT/DELETE | `/backend/api/admin/menu.php` | CRUD menu |
+| GET | `/backend/api/admin/orders.php` | Daftar pesanan |
+| GET | `/backend/api/admin/order-detail.php?code=ORD-...` | Detail pesanan |
+| GET | `/backend/api/admin/notifications.php` | Notifikasi dapur |
+| PATCH | `/backend/api/admin/notifications.php` | Dismiss notifikasi |
+| POST | `/backend/api/admin/ai-menu-parse.php` | NL → intent + SQL |
+| POST | `/backend/api/admin/ai-menu-confirm.php` | Eksekusi / batalkan |
+| GET | `/backend/api/admin/ai-menu-history.php` | Riwayat AI |
 
 ---
 
-### GET `/backend/api/order-status.php?code=ORD-20241201-ABC123`
-
-Mengambil status dan detail pesanan.
-
-**Response sukses:**
-```json
-{
-  "success": true,
-  "data": {
-    "order": {
-      "order_code": "ORD-20241201-ABC123",
-      "table_name": "Meja 1",
-      "total_amount": 55000,
-      "payment_status": "paid"
-    },
-    "items": [
-      { "name": "Nasi Goreng Spesial", "qty": 2, "price": 25000, "subtotal": 50000 }
-    ]
-  }
-}
-```
-
----
-
-### POST `/backend/api/webhook.php`
-
-Menerima callback dari Midtrans setelah pembayaran.  
-**Endpoint ini dipanggil otomatis oleh Midtrans, bukan oleh browser tamu.**
-
----
-
-## 💳 Tentang Midtrans
-
-### Apa itu Midtrans Snap?
-
-Midtrans Snap adalah cara termudah integrasi pembayaran. Kita cukup:
-1. Kirim data transaksi → dapat **snap_token**
-2. Panggil `snap.pay(token)` di frontend → popup pembayaran muncul otomatis
-3. Midtrans handle semua: kartu kredit, transfer bank, QRIS, GoPay, OVO, dll
+## Tentang Midtrans
 
 ### Mode Sandbox vs Production
 
 | | Sandbox | Production |
 |---|---------|-----------|
 | Tujuan | Testing | Uang sungguhan |
-| API URL | `api.sandbox.midtrans.com` | `api.midtrans.com` |
-| snap.js URL | `app.sandbox.midtrans.com` | `app.midtrans.com` |
-| Konfigurasi | `MIDTRANS_IS_PRODUCTION = false` | `MIDTRANS_IS_PRODUCTION = true` |
+| `MIDTRANS_IS_PRODUCTION` | `false` | `true` |
 
-### Kartu Kredit untuk Testing Sandbox
-
-Gunakan kartu kredit simulasi ini di popup Midtrans Sandbox:
+### Kartu Kredit untuk Testing
 
 | Field | Nilai |
 |-------|-------|
@@ -327,92 +322,27 @@ Gunakan kartu kredit simulasi ini di popup Midtrans Sandbox:
 
 ---
 
-## 🔔 Webhook — Cara Kerja & Testing
+## Webhook — Cara Testing
 
-### Apa itu Webhook?
+Midtrans butuh URL publik. Gunakan cloudflared:
 
-Webhook adalah cara Midtrans memberitahu server kita bahwa pembayaran sudah berhasil.
-
-**Prosesnya:**
-```
-Tamu bayar di popup Midtrans
-         ↓
-Midtrans proses pembayaran
-         ↓
-Midtrans kirim HTTP POST ke webhook URL kamu
-(berisi data: order_id, status, amount, signature)
-         ↓
-PHP kamu terima, verifikasi, update database
-         ↓
-Status pesanan jadi "paid"
-```
-
-### Masalah: Midtrans Tidak Bisa Akses localhost
-
-Midtrans butuh URL yang bisa diakses dari internet.  
-`http://localhost:8080` tidak bisa diakses dari luar komputer kamu.
-
-**Solusi: Cloudflared Tunnel (gratis, tanpa akun)**
-
-1. Download cloudflared:
-   - Windows: https://github.com/cloudflare/cloudflared/releases → `cloudflared-windows-amd64.exe`
-   - Mac: `brew install cloudflared`
-   - Linux: `sudo apt install cloudflared`
-
-2. Jalankan tunnel:
 ```bash
 cloudflared tunnel --url http://localhost:8080
 ```
 
-3. Kamu akan dapat URL seperti:
+Kamu akan mendapat URL seperti `https://abc123-random.trycloudflare.com`.
+
+Daftarkan di Midtrans Dashboard:
+- **Settings** → **Configuration** → **Payment Notification URL**:
 ```
-https://abc123-random.trycloudflare.com
+https://abc123-random.trycloudflare.com/backend/api/webhook.php
 ```
-
-4. Daftarkan URL webhook di Midtrans Dashboard:
-   - Login ke https://dashboard.sandbox.midtrans.com
-   - **Settings** → **Configuration**
-   - Isi **Payment Notification URL**:
-   ```
-   https://abc123-random.trycloudflare.com/backend/api/webhook.php
-   ```
-   - Klik **Save**
-
-5. Coba lakukan pembayaran test — webhook akan diterima.
-
-### Testing Webhook Manual
-
-Kamu bisa test webhook tanpa bayar sungguhan via Midtrans Dashboard:
-- **Settings** → **Configuration** → **Send Test Notification**
-
-Atau test langsung via curl:
-```bash
-curl -X POST http://localhost:8080/backend/api/webhook.php \
-  -H "Content-Type: application/json" \
-  -d '{
-    "order_id": "ORD-20241201-ABC123",
-    "status_code": "200",
-    "gross_amount": "55000.00",
-    "transaction_status": "settlement",
-    "fraud_status": "accept",
-    "signature_key": "ISI_DENGAN_HASH_YANG_VALID"
-  }'
-```
-
-> ⚠️ Untuk test via curl, signature_key harus valid.  
-> Rumus: `SHA512(order_id + status_code + gross_amount + server_key)`
-
-Lihat log webhook di phpMyAdmin → tabel `payment_logs`.
 
 ---
 
-## 🗄️ Database
+## Database
 
-Buka phpMyAdmin di http://localhost:8081
-
-Login: `root` / `root123`
-
-### Tabel-tabel
+Buka phpMyAdmin di http://localhost:8081 (root / root123)
 
 | Tabel | Fungsi |
 |-------|--------|
@@ -421,15 +351,8 @@ Login: `root` / `root123`
 | `orders` | Header pesanan |
 | `order_items` | Detail item dalam pesanan |
 | `payment_logs` | Log callback dari Midtrans |
-
-### Melihat semua pesanan
-
-```sql
-SELECT o.order_code, t.table_name, o.total_amount, o.payment_status, o.created_at
-FROM orders o
-JOIN tables t ON t.id = o.table_id
-ORDER BY o.created_at DESC;
-```
+| `admin_users` | Akun admin panel |
+| `ai_menu_logs` | Audit log perintah AI CRUD Menu |
 
 ### Reset database (hapus semua pesanan)
 
@@ -443,82 +366,60 @@ SET FOREIGN_KEY_CHECKS = 1;
 
 ---
 
-## ✏️ Workflow Development (Edit Tanpa Rebuild)
-
-Karena kita pakai **bind mount** di Docker, kamu bisa langsung edit file dan hasilnya langsung terlihat:
-
-```
-Edit file PHP/HTML/CSS/JS
-        ↓
-     Save
-        ↓
-Refresh browser
-        ↓
-Perubahan langsung muncul ✅
-```
-
-**Tidak perlu** `docker compose build` atau `docker compose restart` setiap kali ubah kode.
-
-`docker compose build` hanya diperlukan jika kamu mengubah **`docker/Dockerfile`**.
-
----
-
-## 🛠️ Perintah Docker yang Berguna
+## Perintah Docker
 
 ```bash
 # Jalankan semua service
 docker compose up -d
 
-# Matikan semua service
+# Matikan
 docker compose down
 
-# Lihat log Apache/PHP (berguna untuk debug error)
+# Lihat log Apache/PHP
 docker compose logs -f app
 
-# Lihat log MySQL
-docker compose logs -f mysql
-
-# Masuk ke container PHP (untuk debugging)
+# Masuk ke container PHP
 docker compose exec app bash
 
-# Rebuild image (hanya jika Dockerfile berubah)
+# Rebuild (hanya jika Dockerfile berubah)
 docker compose build
 
-# Hapus semua (termasuk data MySQL) dan mulai bersih
-docker compose down -v
-docker compose up -d
+# Hapus semua termasuk data MySQL
+docker compose down -v && docker compose up -d
 ```
 
 ---
 
-## ❗ Troubleshooting
+## Troubleshooting
 
-### "Koneksi database gagal"
+**"Koneksi database gagal"**
+- Pastikan container mysql running: `docker compose ps`
+- MySQL butuh ~10 detik untuk siap pertama kali
+- `DB_HOST` harus `mysql`, bukan `localhost`
 
-- Pastikan container mysql sudah running: `docker compose ps`
-- MySQL butuh ~10 detik untuk siap pertama kali. Tunggu sebentar lalu refresh.
-- Cek nama host di `config.php` sudah `mysql` (bukan `localhost`)
-
-### "Gagal membuat transaksi Midtrans"
-
-- Pastikan Server Key dan Client Key sudah diisi dengan benar
-- Pastikan koneksi internet aktif (container butuh akses ke `api.sandbox.midtrans.com`)
+**"Gagal membuat transaksi Midtrans"**
+- Pastikan Server Key dan Client Key sudah benar di `backend/.env`
 - Cek log: `docker compose logs -f app`
 
-### Webhook tidak diterima
+**"Gagal memuat data laporan / dashboard"**
+- Pastikan sudah login di `admin/login.html`
+- Cek apakah migrasi sudah dijalankan (terutama `migration_admin.sql`)
 
-- Pastikan cloudflared tunnel sedang berjalan
+**"Notifikasi dapur tidak muncul"**
+- Pastikan `migration_notifications.sql` sudah dijalankan
+- Webhook harus berjalan agar `payment_status` terupdate (atau update manual via phpMyAdmin)
+
+**"AI CRUD Menu error"**
+- Pastikan `KOBOI_API_KEY` sudah diisi di `backend/.env`
+- Pastikan `migration_ai_menu_logs.sql` sudah dijalankan
+- Rate limit: 15 request per 5 menit — tunggu jika kena limit
+
+**Webhook tidak diterima**
+- Pastikan cloudflared tunnel berjalan
 - Pastikan URL webhook di dashboard Midtrans sudah diperbarui
-- Cek tabel `payment_logs` di phpMyAdmin — apakah ada entry baru?
 
-### Halaman 403 Forbidden
-
-- Pastikan folder `frontend/` dan `backend/` ada di dalam folder project
-- Cek apakah bind mount berhasil: `docker compose exec app ls /var/www/html`
-
-### Port sudah dipakai
-
-Jika port 8080, 3306, atau 8081 sudah dipakai aplikasi lain, ganti di `docker-compose.yml`:
+**Port sudah dipakai**
+Ganti di `docker-compose.yml`:
 ```yaml
 ports:
   - "9090:80"   # ganti 8080 → 9090
@@ -526,12 +427,13 @@ ports:
 
 ---
 
-## 📚 Belajar Lebih Lanjut
+## Referensi
 
 | Topik | Link |
 |-------|------|
 | Midtrans Snap Docs | https://docs.midtrans.com/docs/snap-overview |
 | Midtrans Sandbox Dashboard | https://dashboard.sandbox.midtrans.com |
+| KoboiLLM | https://lite.koboillm.com |
 | PHP PDO Docs | https://www.php.net/manual/en/book.pdo.php |
 | Docker Compose Docs | https://docs.docker.com/compose/ |
 | Cloudflared | https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/do-more-with-tunnels/trycloudflare/ |
