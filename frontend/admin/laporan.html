@@ -119,6 +119,24 @@
   </main>
 </div>
 
+<!-- Modal Detail Pesanan -->
+<div class="modal-overlay hidden" id="detailOverlay" onclick="closeDetail(event)">
+  <div class="modal" style="max-width:600px">
+    <div class="modal-header">
+      <span class="modal-title" id="detailTitle">Detail Pesanan</span>
+      <button class="modal-close" onclick="closeDetailModal()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body" id="detailBody">
+      <div style="text-align:center;padding:30px;color:var(--tx-muted)">Memuat...</div>
+    </div>
+    <div class="modal-footer" id="detailFooter">
+      <button class="btn btn-ghost btn-sm" onclick="closeDetailModal()">Tutup</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast-container" id="toastContainer"></div>
 
 <script src="js/auth.js"></script>

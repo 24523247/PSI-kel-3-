@@ -95,7 +95,7 @@ function renderTable(orders) {
         <td><span class="badge ${s.cls}"><span class="badge-dot"></span>${s.label}</span></td>
         <td class="date-cell">${formatDate(o.created_at)}</td>
         <td class="center">
-          <a href="/frontend/payment-result.html?code=${esc(o.order_code)}" target="_blank" class="btn btn-secondary btn-xs">Lihat</a>
+          <button class="btn btn-secondary btn-xs" onclick="openDetail('${esc(o.order_code)}')">Lihat</button>
         </td>
       </tr>`;
   }).join('');
@@ -140,5 +140,89 @@ function changePage(n) {
 function formatRp(n)   { return 'Rp ' + Number(n).toLocaleString('id-ID'); }
 function formatDate(s) { return new Date(String(s).replace(' ', 'T')).toLocaleString('id-ID', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' }); }
 function esc(s)        { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ── Detail Modal ─────────────────────────────────────────────
+async function openDetail(code) {
+  const overlay = document.getElementById('detailOverlay');
+  const body    = document.getElementById('detailBody');
+  const footer  = document.getElementById('detailFooter');
+  const title   = document.getElementById('detailTitle');
+
+  title.textContent = 'Detail Pesanan';
+  body.innerHTML    = '<div style="text-align:center;padding:30px;color:var(--tx-muted)">Memuat...</div>';
+  footer.innerHTML  = '<button class="btn btn-ghost btn-sm" onclick="closeDetailModal()">Tutup</button>';
+  overlay.classList.remove('hidden');
+
+  try {
+    const res  = await fetch(`${API}/order-detail.php?code=${encodeURIComponent(code)}`, { credentials: 'include' });
+    const json = await res.json();
+    if (!json.success) throw new Error(json.message);
+
+    const { order, items } = json.data;
+    const statusMap = {
+      paid:      { label: 'Lunas',      cls: 'badge-green'  },
+      pending:   { label: 'Pending',    cls: 'badge-yellow' },
+      failed:    { label: 'Gagal',      cls: 'badge-red'    },
+      cancelled: { label: 'Dibatalkan', cls: 'badge-gray'   },
+    };
+    const s = statusMap[order.payment_status] || { label: order.payment_status, cls: 'badge-gray' };
+
+    title.textContent = esc(order.order_code);
+
+    body.innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 20px;font-size:13px">
+        <div><span style="color:var(--tx-muted)">Meja</span><div style="font-weight:600;margin-top:2px">${esc(order.table_name)}</div></div>
+        <div><span style="color:var(--tx-muted)">Status</span><div style="margin-top:4px"><span class="badge ${s.cls}"><span class="badge-dot"></span>${s.label}</span></div></div>
+        <div><span style="color:var(--tx-muted)">Tanggal</span><div style="font-weight:600;margin-top:2px">${formatDate(order.created_at)}</div></div>
+        <div><span style="color:var(--tx-muted)">Total</span><div style="font-weight:700;margin-top:2px;color:var(--accent)">${formatRp(order.total_amount)}</div></div>
+      </div>
+
+      <div>
+        <div style="font-size:13px;font-weight:600;color:var(--tx-2);margin-bottom:10px">Item Pesanan</div>
+        <table class="data-table" style="font-size:12.5px">
+          <thead>
+            <tr>
+              <th>Menu</th>
+              <th class="center">Qty</th>
+              <th class="right" style="text-align:right">Harga</th>
+              <th class="right" style="text-align:right">Subtotal</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${items.map(it => `
+              <tr>
+                <td>${esc(it.name)}</td>
+                <td class="center">${it.qty}</td>
+                <td style="text-align:right;color:var(--tx-muted)">${formatRp(it.price)}</td>
+                <td style="text-align:right;font-weight:600">${formatRp(it.subtotal)}</td>
+              </tr>`).join('')}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="3" style="text-align:right;font-weight:600;padding-top:10px">Total</td>
+              <td style="text-align:right;font-weight:700;color:var(--accent);padding-top:10px">${formatRp(order.total_amount)}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>`;
+
+    footer.innerHTML = `
+      <a href="/frontend/payment-result.html?code=${encodeURIComponent(code)}" target="_blank" class="btn btn-secondary btn-sm">Buka Halaman Pembayaran</a>
+      <button class="btn btn-ghost btn-sm" onclick="closeDetailModal()">Tutup</button>`;
+
+  } catch (e) {
+    body.innerHTML = `<div style="text-align:center;padding:30px;color:var(--tx-muted)">${e.message || 'Gagal memuat detail'}</div>`;
+  }
+}
+
+function closeDetailModal() {
+  document.getElementById('detailOverlay').classList.add('hidden');
+}
+
+function closeDetail(e) {
+  if (e.target === document.getElementById('detailOverlay')) closeDetailModal();
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDetailModal(); });
 
 loadOrders();
