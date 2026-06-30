@@ -55,7 +55,7 @@ if (empty($apiKey)) {
 // KoboiLLM — OpenAI-compatible endpoint
 $endpoint = 'https://lite.koboillm.com/v1/chat/completions';
 $payload  = json_encode([
-    'model'       => 'gemini-2.5-flash',
+    'model'       => 'gemini/gemini-2.5-flash',
     'messages'    => [
         [
             'role'    => 'system',

@@ -99,7 +99,7 @@ $userMsg = "Daftar menu saat ini:\n{$menuList}\nPerintah admin: \"{$prompt}\"";
 
 // ── Kirim ke KoboiLLM ──────────────────────────────────────
 $payload = json_encode([
-    'model'       => 'gemini-2.5-flash',
+    'model'       => 'gemini/gemini-2.5-flash',
     'messages'    => [
         ['role' => 'system', 'content' => $systemMsg],
         ['role' => 'user',   'content' => $userMsg],

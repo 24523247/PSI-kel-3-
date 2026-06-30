@@ -2,7 +2,9 @@
 // ============================================================
 // API: GET /backend/api/manager/dashboard.php
 // Data lengkap untuk dashboard manajer: KPI, tren, analitik
-// Query param: ?days=7|30|90  (default 30, max 365)
+// Query param:
+//   ?days=7|30|90        (default 30, max 365)
+//   ?from=YYYY-MM-DD&to=YYYY-MM-DD  (custom range, max 365 hari)
 // ============================================================
 
 require_once __DIR__ . '/../../config.php';
@@ -15,10 +17,32 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
     jsonResponse(['success' => false, 'message' => 'Method tidak diizinkan'], 405);
 }
 
-$days = min(365, max(1, (int)($_GET['days'] ?? 30)));
-$db   = getDB();
+$db    = getDB();
+$today = date('Y-m-d');
 
-// ── Deteksi kolom opsional ───────────────────────────────────
+// ── Parse date range ──────────────────────────────────────────
+if (!empty($_GET['from']) && !empty($_GET['to'])) {
+    $dateFrom = $_GET['from'];
+    $dateTo   = $_GET['to'];
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateFrom) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateTo)) {
+        jsonResponse(['success' => false, 'message' => 'Format tanggal tidak valid (YYYY-MM-DD)'], 400);
+    }
+    if ($dateFrom > $dateTo) [$dateFrom, $dateTo] = [$dateTo, $dateFrom];
+    if ($dateTo > $today)    $dateTo = $today;
+    $days     = min(365, (int)(new DateTime($dateFrom))->diff(new DateTime($dateTo))->days + 1);
+    $isCustom = true;
+} else {
+    $days     = min(365, max(1, (int)($_GET['days'] ?? 30)));
+    $dateTo   = $today;
+    $dateFrom = date('Y-m-d', strtotime('-' . ($days - 1) . ' days'));
+    $isCustom = false;
+}
+
+// Periode sebelumnya untuk perbandingan growth
+$prevDateTo   = date('Y-m-d', strtotime($dateFrom . ' -1 day'));
+$prevDateFrom = date('Y-m-d', strtotime($prevDateTo . ' -' . ($days - 1) . ' days'));
+
+// ── Deteksi kolom opsional ────────────────────────────────────
 $hasCostColumn   = false;
 $hasOiCostColumn = false;
 try { $db->query("SELECT cost_price FROM products    LIMIT 0"); $hasCostColumn   = true; } catch (PDOException $e) {}
@@ -31,8 +55,6 @@ if ($hasCostColumn) {
     )->fetchColumn();
 }
 
-// Prioritas: snapshot di order_items (akurat historis) → products.cost_price (fallback) → 0
-// NULLIF(oi.cost_price, 0) → pakai oi.cost_price jika > 0, else fallback ke p.cost_price
 if ($hasOiCostColumn) {
     $profitExpr = "COALESCE(SUM((oi.price - COALESCE(NULLIF(oi.cost_price, 0), COALESCE(p.cost_price, 0))) * oi.qty), 0)";
 } elseif ($hasCostColumn) {
@@ -41,27 +63,26 @@ if ($hasOiCostColumn) {
     $profitExpr = "0";
 }
 
-// ── 1. Summary periode sekarang ──────────────────────────────
+// ── 1. Summary ────────────────────────────────────────────────
 $sumStmt = $db->prepare("
     SELECT
-        COALESCE(SUM(o.total_amount), 0)  AS revenue,
-        COUNT(DISTINCT o.id)               AS orders_paid,
-        COALESCE(AVG(o.total_amount), 0)  AS avg_order_value,
-        {$profitExpr}                      AS profit
+        COALESCE(SUM(oi.subtotal), 0) AS revenue,
+        COUNT(DISTINCT o.id)          AS orders_paid,
+        {$profitExpr}                 AS profit
     FROM orders o
     LEFT JOIN order_items oi ON oi.order_id = o.id
     LEFT JOIN products p     ON p.id        = oi.product_id
     WHERE o.payment_status = 'paid'
-      AND o.created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+      AND DATE(o.created_at) BETWEEN ? AND ?
 ");
-$sumStmt->execute([$days]);
+$sumStmt->execute([$dateFrom, $dateTo]);
 $s = $sumStmt->fetch();
 
-// Total semua order untuk conversion rate
+// Total semua order (untuk conversion rate)
 $totStmt = $db->prepare(
-    "SELECT COUNT(*) FROM orders WHERE created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)"
+    "SELECT COUNT(*) FROM orders WHERE DATE(created_at) BETWEEN ? AND ?"
 );
-$totStmt->execute([$days]);
+$totStmt->execute([$dateFrom, $dateTo]);
 $totalOrders = (int)$totStmt->fetchColumn();
 
 // Revenue periode sebelumnya untuk growth %
@@ -69,43 +90,45 @@ $prevStmt = $db->prepare("
     SELECT COALESCE(SUM(total_amount), 0)
     FROM orders
     WHERE payment_status = 'paid'
-      AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
-      AND created_at <  DATE_SUB(NOW(), INTERVAL ? DAY)
+      AND DATE(created_at) BETWEEN ? AND ?
 ");
-$prevStmt->execute([$days * 2, $days]);
+$prevStmt->execute([$prevDateFrom, $prevDateTo]);
 $prevRevenue = (float)$prevStmt->fetchColumn();
 
 $revenue    = (float)$s['revenue'];
 $profit     = (float)$s['profit'];
 $ordersPaid = (int)$s['orders_paid'];
-$avgOrder   = (float)$s['avg_order_value'];
+$avgOrder   = $ordersPaid > 0 ? round($revenue / $ordersPaid, 2) : 0;
 $growth     = $prevRevenue > 0 ? round(($revenue - $prevRevenue) / $prevRevenue * 100, 1) : null;
 $margin     = $revenue > 0 ? round($profit / $revenue * 100, 1) : 0;
 $convRate   = $totalOrders > 0 ? round($ordersPaid / $totalOrders * 100, 1) : 0;
 
-// ── 2. Tren revenue harian (isi gap dengan 0) ────────────────
+// ── 2. Tren revenue harian ────────────────────────────────────
 $trendStmt = $db->prepare("
     SELECT DATE(created_at) AS date,
            COALESCE(SUM(total_amount), 0) AS revenue,
            COUNT(*) AS orders
     FROM orders
     WHERE payment_status = 'paid'
-      AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+      AND DATE(created_at) BETWEEN ? AND ?
     GROUP BY DATE(created_at)
     ORDER BY date ASC
 ");
-$trendStmt->execute([$days]);
+$trendStmt->execute([$dateFrom, $dateTo]);
 $trendRaw = [];
 foreach ($trendStmt->fetchAll() as $r) {
     $trendRaw[$r['date']] = ['revenue' => (float)$r['revenue'], 'orders' => (int)$r['orders']];
 }
 $trend = [];
-for ($i = $days - 1; $i >= 0; $i--) {
-    $d       = date('Y-m-d', strtotime("-{$i} days"));
+$cur   = strtotime($dateFrom);
+$end   = strtotime($dateTo);
+while ($cur <= $end) {
+    $d       = date('Y-m-d', $cur);
     $trend[] = ['date' => $d, 'revenue' => $trendRaw[$d]['revenue'] ?? 0, 'orders' => $trendRaw[$d]['orders'] ?? 0];
+    $cur     = strtotime('+1 day', $cur);
 }
 
-// ── 3. Breakdown per kategori ────────────────────────────────
+// ── 3. Breakdown per kategori ─────────────────────────────────
 $catStmt = $db->prepare("
     SELECT p.category,
            COALESCE(SUM(oi.subtotal), 0) AS revenue,
@@ -115,11 +138,11 @@ $catStmt = $db->prepare("
     JOIN products p ON p.id = oi.product_id
     JOIN orders o   ON o.id = oi.order_id
     WHERE o.payment_status = 'paid'
-      AND o.created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+      AND DATE(o.created_at) BETWEEN ? AND ?
     GROUP BY p.category
     ORDER BY revenue DESC
 ");
-$catStmt->execute([$days]);
+$catStmt->execute([$dateFrom, $dateTo]);
 $categories = array_map(fn($r) => [
     'category' => $r['category'],
     'revenue'  => (float)$r['revenue'],
@@ -127,9 +150,7 @@ $categories = array_map(fn($r) => [
     'profit'   => (float)$r['profit'],
 ], $catStmt->fetchAll());
 
-// ── 4. Top 10 produk ─────────────────────────────────────────
-// cost_price untuk display: snapshot rata-rata dari order_items (jika ada),
-// fallback ke products.cost_price untuk produk tanpa data historis
+// ── 4. Top 10 produk ──────────────────────────────────────────
 if ($hasOiCostColumn) {
     $cpCol = "COALESCE(NULLIF(AVG(NULLIF(oi.cost_price, 0)), 0), MAX(p.cost_price), 0) AS cost_price,";
 } elseif ($hasCostColumn) {
@@ -148,12 +169,12 @@ $topStmt = $db->prepare("
     JOIN products p ON p.id = oi.product_id
     JOIN orders o   ON o.id = oi.order_id
     WHERE o.payment_status = 'paid'
-      AND o.created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+      AND DATE(o.created_at) BETWEEN ? AND ?
     GROUP BY p.id, p.name, p.category, p.price{$cpGroup}
     ORDER BY revenue DESC
     LIMIT 10
 ");
-$topStmt->execute([$days]);
+$topStmt->execute([$dateFrom, $dateTo]);
 $topProducts = array_map(function ($r) {
     $rev = (float)$r['revenue'];
     $pft = (float)$r['profit'];
@@ -170,15 +191,15 @@ $topProducts = array_map(function ($r) {
     ];
 }, $topStmt->fetchAll());
 
-// ── 5. Peak hours (0–23, isi semua jam) ──────────────────────
+// ── 5. Peak hours ─────────────────────────────────────────────
 $peakStmt = $db->prepare("
     SELECT HOUR(created_at) AS hour, COUNT(*) AS orders, SUM(total_amount) AS revenue
     FROM orders
     WHERE payment_status = 'paid'
-      AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+      AND DATE(created_at) BETWEEN ? AND ?
     GROUP BY HOUR(created_at)
 ");
-$peakStmt->execute([$days]);
+$peakStmt->execute([$dateFrom, $dateTo]);
 $peakRaw = [];
 foreach ($peakStmt->fetchAll() as $r) {
     $peakRaw[(int)$r['hour']] = ['orders' => (int)$r['orders'], 'revenue' => (float)$r['revenue']];
@@ -188,31 +209,31 @@ for ($h = 0; $h < 24; $h++) {
     $peakHours[] = ['hour' => $h, 'orders' => $peakRaw[$h]['orders'] ?? 0, 'revenue' => $peakRaw[$h]['revenue'] ?? 0];
 }
 
-// ── 6. Utilisasi meja ────────────────────────────────────────
+// ── 6. Utilisasi meja ─────────────────────────────────────────
 $tblStmt = $db->prepare("
     SELECT t.table_name, COUNT(o.id) AS orders, SUM(o.total_amount) AS revenue
     FROM orders o
     JOIN `tables` t ON t.id = o.table_id
     WHERE o.payment_status = 'paid'
-      AND o.created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+      AND DATE(o.created_at) BETWEEN ? AND ?
     GROUP BY t.id, t.table_name
     ORDER BY revenue DESC
 ");
-$tblStmt->execute([$days]);
+$tblStmt->execute([$dateFrom, $dateTo]);
 $tableStats = array_map(fn($r) => [
     'table_name' => $r['table_name'],
     'orders'     => (int)$r['orders'],
     'revenue'    => (float)$r['revenue'],
 ], $tblStmt->fetchAll());
 
-// ── 7. Distribusi status pembayaran ─────────────────────────
+// ── 7. Distribusi status pembayaran ───────────────────────────
 $psStmt = $db->prepare("
     SELECT payment_status, COUNT(*) AS count
     FROM orders
-    WHERE created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+    WHERE DATE(created_at) BETWEEN ? AND ?
     GROUP BY payment_status
 ");
-$psStmt->execute([$days]);
+$psStmt->execute([$dateFrom, $dateTo]);
 $paymentStatus = ['paid' => 0, 'pending' => 0, 'failed' => 0, 'cancelled' => 0];
 foreach ($psStmt->fetchAll() as $r) {
     if (array_key_exists($r['payment_status'], $paymentStatus)) {
@@ -225,6 +246,9 @@ jsonResponse([
     'data'    => [
         'meta' => [
             'days'          => $days,
+            'date_from'     => $dateFrom,
+            'date_to'       => $dateTo,
+            'is_custom'     => $isCustom,
             'has_cost_data' => $hasCostData,
         ],
         'summary' => [

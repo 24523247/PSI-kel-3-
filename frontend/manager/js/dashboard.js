@@ -1,6 +1,9 @@
 const API = '/backend/api/manager';
 
 let currentDays = 30;
+let isCustom    = false;
+let customFrom  = '';
+let customTo    = '';
 const charts    = {};
 
 // ── Palette warna konsisten ───────────────────────────────────
@@ -60,25 +63,34 @@ function fmtDate(dateStr) {
   const d = new Date(dateStr + 'T00:00:00');
   return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
 }
+function fmtDateShort(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00');
+  return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+}
 
 // ── Load data ─────────────────────────────────────────────────
 async function loadDashboard() {
   setLoadingState(true);
   try {
-    const res  = await fetch(`${API}/dashboard.php?days=${currentDays}`, { credentials: 'include' });
+    const url = isCustom
+      ? `${API}/dashboard.php?from=${customFrom}&to=${customTo}`
+      : `${API}/dashboard.php?days=${currentDays}`;
+    const res  = await fetch(url, { credentials: 'include' });
     const json = await res.json();
     if (!json.success) {
       if (res.status === 401) window.location.replace('../admin/login.html');
       return;
     }
-    const d = json.data;
-    renderHppBanner(d.meta.has_cost_data);
-    renderKPI(d.summary, d.meta.has_cost_data);
-    renderRevenueTrend(d.revenue_trend);
+    const d    = json.data;
+    const meta = d.meta;
+    updatePeriodLabel(meta);
+    renderHppBanner(meta.has_cost_data);
+    renderKPI(d.summary, meta.has_cost_data, meta);
+    renderRevenueTrend(d.revenue_trend, meta);
     renderCategoryChart(d.category_breakdown);
     renderPeakHoursChart(d.peak_hours);
     renderPaymentStatusChart(d.payment_status);
-    renderTopProductsTable(d.top_products, d.meta.has_cost_data);
+    renderTopProductsTable(d.top_products, meta.has_cost_data);
     renderTableStats(d.table_stats);
   } catch (e) {
     console.error(e);
@@ -89,6 +101,18 @@ async function loadDashboard() {
 
 function setLoadingState(on) {
   document.querySelectorAll('[data-days]').forEach(b => b.disabled = on);
+  const applyBtn = document.querySelector('#customPicker .filter-btn');
+  if (applyBtn) applyBtn.disabled = on;
+}
+
+function updatePeriodLabel(meta) {
+  const el = document.getElementById('periodLabel');
+  if (!el) return;
+  if (meta.is_custom) {
+    el.textContent = `${fmtDateShort(meta.date_from)} – ${fmtDateShort(meta.date_to)}`;
+  } else {
+    el.textContent = '';
+  }
 }
 
 // ── HPP Banner ────────────────────────────────────────────────
@@ -98,11 +122,14 @@ function renderHppBanner(hasCostData) {
 }
 
 // ── KPI Cards ─────────────────────────────────────────────────
-function renderKPI(s, hasCostData) {
+function renderKPI(s, hasCostData, meta) {
+  const periodLabel = meta.is_custom
+    ? `${fmtDateShort(meta.date_from)} – ${fmtDateShort(meta.date_to)}`
+    : `${meta.days} hari terakhir`;
   const growthCls  = s.revenue_growth === null ? '' : (s.revenue_growth >= 0 ? 'up' : 'down');
   const growthTxt  = s.revenue_growth === null
     ? '<span style="color:var(--tx-pale)">— (belum ada data pembanding)</span>'
-    : `<span class="${growthCls}">${formatPct(s.revenue_growth)}</span> vs ${currentDays} hari sebelumnya`;
+    : `<span class="${growthCls}">${formatPct(s.revenue_growth)}</span> vs periode sebelumnya`;
 
   const profitNum  = hasCostData ? formatRp(s.profit) : '—';
   const profitSub  = hasCostData
@@ -167,13 +194,13 @@ function renderKPI(s, hasCostData) {
       </div>
       <div class="stat-number" style="font-size:18px">${formatRp(s.avg_order_value)}</div>
       <div class="stat-label">Rata-rata / Pesanan</div>
-      <div class="stat-sub"><span class="info">${currentDays} hari terakhir</span></div>
+      <div class="stat-sub"><span class="info">${periodLabel}</span></div>
     </div>
   `;
 }
 
 // ── Revenue Trend (Bar + Line overlay) ───────────────────────
-function renderRevenueTrend(trend) {
+function renderRevenueTrend(trend, meta) {
   const hasData = trend.some(t => t.revenue > 0);
   mkChart('chartRevenueTrend', {
     type: 'bar',
@@ -197,7 +224,7 @@ function renderRevenueTrend(trend) {
           data: trend.map(t => t.orders),
           borderColor: C.orange,
           borderWidth: 2,
-          pointRadius: currentDays <= 14 ? 3 : 0,
+          pointRadius: (meta?.days ?? currentDays) <= 14 ? 3 : 0,
           pointHoverRadius: 4,
           tension: 0.4,
           fill: false,
@@ -479,11 +506,166 @@ function showNoData(canvasId, msg) {
 // ── Days filter ───────────────────────────────────────────────
 document.querySelectorAll('[data-days]').forEach(btn => {
   btn.addEventListener('click', () => {
+    isCustom    = false;
     currentDays = parseInt(btn.dataset.days);
     document.querySelectorAll('[data-days]').forEach(b => b.classList.remove('filter-active'));
+    document.getElementById('btnCustom')?.classList.remove('filter-active');
+    document.getElementById('customPicker').style.display = 'none';
     btn.classList.add('filter-active');
     loadDashboard();
   });
 });
 
+// ── Custom date range picker ──────────────────────────────────
+function toggleCustomPicker() {
+  const picker = document.getElementById('customPicker');
+  const btn    = document.getElementById('btnCustom');
+  const isOpen = picker.style.display === 'flex';
+  if (isOpen) {
+    closeCustomPicker();
+    return;
+  }
+  picker.style.display = 'flex';
+  btn.classList.add('filter-active');
+  const todayStr  = new Date().toISOString().split('T')[0];
+  const inputFrom = document.getElementById('inputFrom');
+  const inputTo   = document.getElementById('inputTo');
+  inputFrom.max   = todayStr;
+  inputTo.max     = todayStr;
+  if (!inputFrom.value) {
+    const from = new Date();
+    from.setDate(from.getDate() - 29);
+    inputFrom.value = from.toISOString().split('T')[0];
+    inputTo.value   = todayStr;
+  }
+}
+
+function closeCustomPicker() {
+  document.getElementById('customPicker').style.display = 'none';
+  if (!isCustom) {
+    document.getElementById('btnCustom')?.classList.remove('filter-active');
+  }
+}
+
+function applyCustomRange() {
+  const from = document.getElementById('inputFrom').value;
+  const to   = document.getElementById('inputTo').value;
+  if (!from || !to) {
+    alert('Pilih tanggal awal dan akhir terlebih dahulu');
+    return;
+  }
+  if (from > to) {
+    alert('Tanggal awal tidak boleh setelah tanggal akhir');
+    return;
+  }
+  isCustom   = true;
+  customFrom = from;
+  customTo   = to;
+  document.querySelectorAll('[data-days]').forEach(b => b.classList.remove('filter-active'));
+  document.getElementById('btnCustom').classList.add('filter-active');
+  document.getElementById('customPicker').style.display = 'none';
+  loadDashboard();
+}
+
+// ── AI Insight ────────────────────────────────────────────────
+async function loadInsight() {
+  try {
+    const res  = await fetch('/backend/api/manager/ai-insight.php', { credentials: 'include' });
+    const json = await res.json();
+    if (json.success && json.cached) renderInsight(json.data);
+  } catch {}
+}
+
+async function refreshInsight() {
+  const btn  = document.getElementById('btnInsight');
+  const meta = document.getElementById('insightMeta');
+  const body = document.getElementById('insightBody');
+
+  btn.disabled  = true;
+  btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:13px;height:13px"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg> Menganalisa...';
+  meta.textContent = 'AI sedang menganalisa data penjualan...';
+  body.innerHTML = `<div style="padding:20px 4px">
+    <div class="skeleton sk-text sk-w-60" style="margin-bottom:10px"></div>
+    <div class="skeleton sk-text sk-w-40" style="margin-bottom:8px"></div>
+    <div class="skeleton sk-text sk-w-50" style="margin-bottom:8px"></div>
+    <div class="skeleton sk-text sk-w-32"></div>
+  </div>`;
+
+  try {
+    const insightDays = isCustom
+      ? Math.max(7, Math.min(90, Math.ceil((new Date(customTo) - new Date(customFrom)) / 86400000) + 1))
+      : currentDays;
+    const res  = await fetch('/backend/api/manager/ai-insight.php', {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ days: insightDays }),
+    });
+    const json = await res.json();
+    if (!json.success) throw new Error(json.message || 'Gagal menganalisa data');
+    renderInsight(json.data);
+  } catch (e) {
+    meta.textContent = 'Gagal menganalisa';
+    body.innerHTML   = `<div style="padding:14px 4px;color:#b91c1c;font-size:13px">${esc(e.message)}</div>`;
+    btn.disabled     = false;
+    btn.innerHTML    = 'Coba Lagi';
+  }
+}
+
+function renderInsight(data) {
+  const btn  = document.getElementById('btnInsight');
+  const meta = document.getElementById('insightMeta');
+  const body = document.getElementById('insightBody');
+
+  meta.textContent = `Data ${data.days} hari terakhir · Diperbarui ${timeAgoInsight(data.generated_at_unix)}`;
+  btn.disabled     = false;
+  btn.innerHTML    = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:13px;height:13px"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg> Perbarui';
+  body.innerHTML   = `<div class="insight-content">${mdToHtml(data.insight)}</div>`;
+}
+
+function mdToHtml(text) {
+  const lines = text.split('\n');
+  let html = '', inUl = false, inOl = false;
+
+  const closeList = () => {
+    if (inUl) { html += '</ul>'; inUl = false; }
+    if (inOl) { html += '</ol>'; inOl = false; }
+  };
+  const safe = s => s
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>')
+    .replace(/\*([^*]+)\*/g,'<em>$1</em>');
+
+  for (const raw of lines) {
+    const line = raw.trimEnd();
+    if (line.startsWith('## ')) {
+      closeList();
+      html += `<div class="insight-h">${safe(line.slice(3))}</div>`;
+    } else if (/^[-*] /.test(line)) {
+      if (inOl) { html += '</ol>'; inOl = false; }
+      if (!inUl) { html += '<ul>'; inUl = true; }
+      html += `<li>${safe(line.slice(2))}</li>`;
+    } else if (/^\d+\. /.test(line)) {
+      if (inUl) { html += '</ul>'; inUl = false; }
+      if (!inOl) { html += '<ol>'; inOl = true; }
+      html += `<li>${safe(line.replace(/^\d+\. /,''))}</li>`;
+    } else if (line.trim() === '') {
+      closeList();
+    } else {
+      closeList();
+      html += `<p>${safe(line)}</p>`;
+    }
+  }
+  closeList();
+  return html;
+}
+
+function timeAgoInsight(unix) {
+  const diff = Math.floor(Date.now() / 1000 - unix);
+  if (diff < 60)    return 'baru saja';
+  if (diff < 3600)  return `${Math.floor(diff / 60)} menit lalu`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)} jam lalu`;
+  return `${Math.floor(diff / 86400)} hari lalu`;
+}
+
 loadDashboard();
+loadInsight();

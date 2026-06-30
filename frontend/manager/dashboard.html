@@ -45,7 +45,7 @@
       display: flex;
       align-items: center;
       gap: 8px;
-      margin-bottom: 20px;
+      margin-bottom: 8px;
       flex-wrap: wrap;
     }
     .filter-bar span { font-size: 12.5px; color: var(--tx-muted); }
@@ -66,6 +66,36 @@
       border-color: var(--accent);
       color: #fff;
       font-weight: 600;
+    }
+
+    /* ── Custom date picker ── */
+    .custom-picker {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      padding: 10px 14px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+      margin-bottom: 14px;
+    }
+    .custom-picker span { font-size: 12px; color: var(--tx-muted); }
+    .filter-date-input {
+      padding: 5px 10px;
+      border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+      font-size: 12px;
+      color: var(--tx);
+      background: var(--bg-card, #fff);
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .filter-date-input:focus { outline: none; border-color: var(--accent); }
+    .period-label {
+      font-size: 11.5px;
+      color: var(--tx-muted);
+      margin-left: 4px;
     }
 
     /* ── HPP Banner ── */
@@ -157,6 +187,25 @@
       color: var(--tx-pale);
       font-size: 12.5px;
     }
+
+    /* ── AI Insight ── */
+    .insight-content { font-size:13px; line-height:1.75; color:var(--tx); padding:4px 0 8px; }
+    .insight-h {
+      font-size: 13px; font-weight: 700; color: var(--tx);
+      margin: 16px 0 6px; padding-bottom: 5px;
+      border-bottom: 1px solid var(--border);
+    }
+    .insight-h:first-child { margin-top: 4px; }
+    .insight-content p  { margin: 3px 0; }
+    .insight-content ul,
+    .insight-content ol { margin: 4px 0 8px 18px; padding: 0; }
+    .insight-content li { margin-bottom: 3px; }
+    .insight-empty {
+      display: flex; flex-direction: column; align-items: center;
+      padding: 36px 20px; text-align: center; gap: 8px;
+    }
+    .insight-empty svg { color: var(--tx-pale); }
+    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
@@ -269,6 +318,20 @@
         <button class="filter-btn filter-active" data-days="30">30 Hari</button>
         <button class="filter-btn" data-days="7">7 Hari</button>
         <button class="filter-btn" data-days="90">90 Hari</button>
+        <button class="filter-btn" id="btnCustom" onclick="toggleCustomPicker()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;vertical-align:-1px;margin-right:3px"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Kustom
+        </button>
+        <span class="period-label" id="periodLabel"></span>
+      </div>
+
+      <!-- Custom date range picker -->
+      <div class="custom-picker" id="customPicker">
+        <span>Dari</span>
+        <input type="date" id="inputFrom" class="filter-date-input">
+        <span>sampai</span>
+        <input type="date" id="inputTo" class="filter-date-input">
+        <button class="filter-btn filter-active" onclick="applyCustomRange()" style="margin-left:4px">Terapkan</button>
+        <button class="filter-btn" onclick="closeCustomPicker()" style="padding:5px 10px">Batal</button>
       </div>
 
       <!-- Banner HPP belum diisi -->
@@ -354,6 +417,30 @@
           </div>
           <div style="position:relative;height:220px">
             <canvas id="chartTableStats"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- AI Insight -->
+      <div class="card chart-card" style="margin-bottom:20px">
+        <div class="chart-card-header" style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <div>
+            <div class="chart-card-title" style="display:flex;align-items:center;gap:7px">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" style="color:var(--accent)"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg>
+              AI Business Insight
+            </div>
+            <div class="chart-card-sub" id="insightMeta">Analisa data dengan AI untuk mendapatkan rekomendasi bisnis</div>
+          </div>
+          <button class="btn btn-primary btn-sm" id="btnInsight" onclick="refreshInsight()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:13px;height:13px"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg>
+            Buat Insight
+          </button>
+        </div>
+        <div id="insightBody">
+          <div class="insight-empty">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg>
+            <p style="font-size:13px;color:var(--tx-muted);font-weight:600">Belum ada insight</p>
+            <p style="font-size:12px;color:var(--tx-pale)">Klik "Buat Insight" untuk menganalisa data penjualan dengan AI.<br>Insight disimpan — tidak perlu dibuat ulang setiap kunjungan.</p>
           </div>
         </div>
       </div>
